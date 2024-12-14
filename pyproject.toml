@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "social-charger-club-app"
+version = "0.1.0"
+description = ""
+authors = ["Lily Chau <chauyeeki@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pytest = "^8.3.4"
+boto3 = "^1.35.81"
+requests = "^2.32.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
