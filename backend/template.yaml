@@ -76,8 +76,17 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+  RegisterUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: register_user/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Architectures:
+        - x86_64
+      Events:
         RegisterUser:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /register-user
             Method: post
@@ -110,7 +119,7 @@ Outputs:
     Value: !GetAtt HelloWorldFunctionRole.Arn
   RegisterUserApi:
     Description: API Gateway endpoint URL for Prod stage for Register User function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register-user/"
   RegisterUserFunction:
     Description: Register User Lambda Function ARN
     Value: !GetAtt RegisterUserFunction.Arn
