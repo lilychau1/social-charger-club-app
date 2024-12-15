@@ -5,6 +5,15 @@ Description: >
 
   Sample SAM Template for social-charger-club
 
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - Prod
+    Description: "The environment for deployment"
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -17,6 +26,42 @@ Globals:
   Api:
     TracingEnabled: true
 Resources:
+  EVChargingUsersTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: !Sub "${Environment}-EVCharging_Users"
+      AttributeDefinitions: 
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: userId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  EVChargingProducersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-EVCharging_Producers"
+      AttributeDefinitions:
+        - AttributeName: producerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: producerId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  EVChargingConsumersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-EVCharging_Consumers"
+      AttributeDefinitions:
+        - AttributeName: consumerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: consumerId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      
   HelloWorldFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -31,6 +76,11 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+        RegisterUser:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /register-user
+            Method: post
 
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
@@ -58,3 +108,12 @@ Outputs:
   HelloWorldFunctionIamRole:
     Description: Implicit IAM Role created for Hello World function
     Value: !GetAtt HelloWorldFunctionRole.Arn
+  RegisterUserApi:
+    Description: API Gateway endpoint URL for Prod stage for Register User function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+  RegisterUserFunction:
+    Description: Register User Lambda Function ARN
+    Value: !GetAtt RegisterUserFunction.Arn
+  RegisterUserFunctionIamRole:
+    Description: Implicit IAM Role created for Register User function
+    Value: !GetAtt RegisterUserFunctionRole.Arn
