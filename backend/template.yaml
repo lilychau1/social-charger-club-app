@@ -11,7 +11,7 @@ Parameters:
     Default: dev
     AllowedValues:
       - dev
-      - Prod
+      - prod
     Description: "The environment for deployment"
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
@@ -29,7 +29,7 @@ Resources:
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
-      TableName: !Sub "${Environment}-EVCharging_Users"
+      TableName: !Sub "${Environment}-EVCharging_Users"  # Uses Environment to differentiate between dev and prod
       AttributeDefinitions: 
         - AttributeName: userId
           AttributeType: S
@@ -41,7 +41,7 @@ Resources:
   EVChargingProducersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub "${Environment}-EVCharging_Producers"
+      TableName: !Sub "${Environment}-EVCharging_Producers"  # Uses Environment to differentiate between dev and prod
       AttributeDefinitions:
         - AttributeName: producerId
           AttributeType: S
@@ -53,7 +53,7 @@ Resources:
   EVChargingConsumersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub "${Environment}-EVCharging_Consumers"
+      TableName: !Sub "${Environment}-EVCharging_Consumers"  # Uses Environment to differentiate between dev and prod
       AttributeDefinitions:
         - AttributeName: consumerId
           AttributeType: S
@@ -63,16 +63,16 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       
   HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: hello_world/
       Handler: app.lambda_handler
       Runtime: python3.13
       Architectures:
-      - x86_64
+        - x86_64
       Events:
         HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /hello
             Method: get
@@ -112,7 +112,7 @@ Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: EVChargingUserPool
+      UserPoolName: !Sub "${Environment}-EVChargingUserPool"  # Uses Environment to differentiate between dev and prod
       UsernameAttributes:
         - email
       AutoVerifiedAttributes:
@@ -149,7 +149,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref UserPool
-      ClientName: EVChargingUserPoolClient
+      ClientName: !Sub "${Environment}-EVChargingUserPoolClient"  # Uses Environment to differentiate between dev and prod
       GenerateSecret: false
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
