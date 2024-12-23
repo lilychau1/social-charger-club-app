@@ -104,6 +104,67 @@ Resources:
       ResourceGroupName:
         Ref: ApplicationResourceGroup
       AutoConfigurationEnabled: 'true'
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: EVChargingUserPool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: preferred_username
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: userType
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: userId
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: consumerId
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: producerId
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: EVChargingUserPoolClient
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      ReadAttributes:
+        - email
+        - preferred_username
+        - custom:userType
+        - custom:userId
+        - custom:consumerId
+        - custom:producerId
+      WriteAttributes:
+        - email
+        - preferred_username
+        - custom:userType
+        - custom:userId
+        - custom:consumerId
+        - custom:producerId
+
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -126,3 +187,9 @@ Outputs:
   RegisterUserFunctionIamRole:
     Description: Implicit IAM Role created for Register User function
     Value: !GetAtt RegisterUserFunctionRole.Arn
+  UserPoolId:
+    Value: !Ref UserPool
+    Description: ID of the Cognito User Pool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Description: ID of the Cognito User Pool Client
