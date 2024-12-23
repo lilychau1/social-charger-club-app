@@ -82,6 +82,10 @@ Resources:
       CodeUri: register_user/
       Handler: app.lambda_handler
       Runtime: python3.13
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
       Architectures:
         - x86_64
       Events:
