@@ -11,7 +11,7 @@ on:
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AKIA5FCD6J2YFKLVRBPY }}
-  PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.55q2zaAFdrBHMAWVJBHgnf91rSjalnbAPyziT1FL }}
+  PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AKIA5FCD6J2YFKLVRBPY }}
   SAM_TEMPLATE: backend/template.yaml
   TESTING_STACK_NAME: social-charger-club-dev
   TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::904233111216:role/aws-sam-cli-managed-dev-pipel-PipelineExecutionRole-zgUkrEMCAHEM
