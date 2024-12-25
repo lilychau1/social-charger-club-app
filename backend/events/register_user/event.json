@@ -1,0 +1,10 @@
+{
+    "httpMethod": "POST",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer auth-token",
+      "X-Api-Key": "api-key"
+    },
+    "body": "{\"email\": \"user@example.com\", \"password\": \"SecurePassword123!\", \"username\": \"user123\", \"userType\": \"consumer\"}"
+  }
+  

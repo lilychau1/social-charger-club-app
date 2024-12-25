@@ -10,10 +10,10 @@ from datetime import datetime
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
 cognito = boto3.client('cognito-idp')
-table_name = 'EVCharging_Users'
+table_name = os.environ.get('USER_TABLE_NAME')
 table = dynamodb.Table(table_name)
-user_pool_id = os.environ.get('USER_POOL_ID', None)
-client_id = os.environ.get('USER_POOL_CLIENT_ID', None)
+user_pool_id = os.environ.get('USER_POOL_ID')
+client_id = os.environ.get('USER_POOL_CLIENT_ID')
 
 cors_header = {
     'Access-Control-Allow-Origin': 'http://localhost:3000',
@@ -69,7 +69,7 @@ def lambda_handler(event, context):
         # Use email as the default username
         password = body.get('password')
         username = body.get('username', email)
-        user_type = body.get('user_type')
+        user_type = body.get('userType')
 
         # Generate IDs
         user_id, consumer_id, producer_id = generate_ids(user_type)
@@ -94,13 +94,13 @@ def lambda_handler(event, context):
         
         # Create item for DynamoDB
         item = {
-            'user_id': user_id,
+            'userId': user_id,
             'email': email,
             'username': username,
-            'user_type': user_type,
-            'consumer_id': consumer_id,
-            'producer_id': producer_id,
-            'created_at': datetime.now().isoformat(),
+            'userType': user_type,
+            'consumerId': consumer_id,
+            'producerId': producer_id,
+            'createdAt': datetime.now().isoformat(),
             'status': 'UNVERIFIED'
         }
 
@@ -112,10 +112,10 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'headers': cors_header,
             'body': json.dumps({
-                'user_id': user_id,
-                'consumer_id': consumer_id,
-                'producer_id': producer_id,
-                'message': f"User data for {username} (user_id: {user_id}) stored successfully."
+                'userId': user_id,
+                'consumerId': consumer_id,
+                'producerId': producer_id,
+                'message': f"User data for {username} (userId: {user_id}) stored successfully."
             })
         }
     except Exception as e:

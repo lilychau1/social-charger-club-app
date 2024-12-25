@@ -29,13 +29,22 @@ Resources:
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
-      TableName: !Sub "${Environment}-EVCharging_Users"  # Uses Environment to differentiate between dev and prod
+      TableName: !Sub "${Environment}-EVCharging_Users"
       AttributeDefinitions: 
         - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
           AttributeType: S
       KeySchema: 
         - AttributeName: userId
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
   EVChargingProducersTable:
@@ -82,10 +91,12 @@ Resources:
       CodeUri: register_user/
       Handler: app.lambda_handler
       Runtime: python3.13
+      Timeout: 10
       Environment:
         Variables:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          USER_TABLE_NAME: !Ref EVChargingUsersTable
       Architectures:
         - x86_64
       Events:
@@ -113,8 +124,6 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub "${Environment}-EVChargingUserPool"  # Uses Environment to differentiate between dev and prod
-      UsernameAttributes:
-        - email
       AutoVerifiedAttributes:
         - email
       Schema:
