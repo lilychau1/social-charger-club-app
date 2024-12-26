@@ -58,7 +58,6 @@ Resources:
         - AttributeName: producerId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
-
   EVChargingConsumersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -70,6 +69,30 @@ Resources:
         - AttributeName: consumerId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+  EVChargingChargingPointsTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: !Sub "${Environment}-EVCharging_ChargingPoints"
+      AttributeDefinitions: 
+        - AttributeName: chargingPointId
+          AttributeType: S
+        - AttributeName: producerId
+          AttributeType: S
+        - AttributeName: location
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: chargingPointId
+          KeyType: HASH 
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: ProducerIdIndex
+          KeySchema:
+            - AttributeName: producerId
+              KeyType: HASH
+            - AttributeName: location
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL  
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -126,6 +149,25 @@ Resources:
           Type: Api
           Properties:
             Path: /store-new-user-details
+            Method: post
+  StoreProducersChargingPointsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-StoreProducersChargingPoints"
+      CodeUri: store_producers_charging_points/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            Path: /store-producers-charging-points
             Method: post
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group

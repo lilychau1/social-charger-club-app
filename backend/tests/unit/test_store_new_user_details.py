@@ -3,6 +3,7 @@ import pytest
 import os
 from botocore.exceptions import ClientError
 from unittest.mock import patch
+
 from store_new_user_details.app import lambda_handler  # Correct import path
 
 @pytest.fixture()
