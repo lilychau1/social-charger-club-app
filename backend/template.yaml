@@ -106,6 +106,27 @@ Resources:
           Properties:
             Path: /register-user
             Method: post
+  StoreNewUserDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-StoreNewUserDetailsFunction"
+      CodeUri: store_new_user_details/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          USERS_TABLE_NAME: !Ref EVChargingUsersTable
+          CONSUMERS_TABLE_NAME: !Ref EVChargingConsumersTable
+          PRODUCERS_TABLE_NAME: !Ref EVChargingProducersTable
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            Path: /store-new-user-details
+            Method: post
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
