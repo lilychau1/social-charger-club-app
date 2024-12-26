@@ -70,10 +70,10 @@ Resources:
         - AttributeName: consumerId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
-      
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "${Environment}-HelloWorldFunction"
       CodeUri: hello_world/
       Handler: app.lambda_handler
       Runtime: python3.13
@@ -88,6 +88,7 @@ Resources:
   RegisterUserFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "${Environment}-RegisterUserFunction"
       CodeUri: register_user/
       Handler: app.lambda_handler
       Runtime: python3.13
@@ -96,7 +97,7 @@ Resources:
         Variables:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
-          USER_TABLE_NAME: !Ref EVChargingUsersTable
+          USERS_TABLE_NAME: !Ref EVChargingUsersTable
       Architectures:
         - x86_64
       Events:
@@ -105,7 +106,6 @@ Resources:
           Properties:
             Path: /register-user
             Method: post
-
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
