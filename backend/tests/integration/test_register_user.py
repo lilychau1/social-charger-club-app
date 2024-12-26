@@ -15,11 +15,10 @@ def load_env_vars():
         env_vars = json.load(env_file)
         os.environ['USER_POOL_ID'] = env_vars['RegisterUserFunction']['USER_POOL_ID']
         os.environ['USER_POOL_CLIENT_ID'] = env_vars['RegisterUserFunction']['USER_POOL_CLIENT_ID']
-        os.environ['USER_TABLE_NAME'] = env_vars['RegisterUserFunction']['USER_TABLE_NAME']
+        os.environ['USERS_TABLE_NAME'] = env_vars['RegisterUserFunction']['USERS_TABLE_NAME']
 
 # Call this function before your tests (to ensure environment variables are set)
 load_env_vars()
-table_name = os.environ['USER_TABLE_NAME']
 
 @pytest.fixture(scope='module')
 def test_user():
@@ -50,7 +49,7 @@ def clean_up_cognito_user(email):
         print(f"Error cleaning up Cognito user: {str(e)}")
 
 def clean_up_dynamodb_user(user_id):
-    table = dynamodb.Table(table_name)
+    table = dynamodb.Table(os.environ['USERS_TABLE_NAME'])
     try:
         table.delete_item(
             Key={'userId': user_id}
@@ -89,7 +88,7 @@ def test_lambda_handler_integration(test_user):
         pytest.fail(f"User not found in Cognito: {str(e)}")
 
     # Verify user in DynamoDB
-    table = dynamodb.Table(table_name)
+    table = dynamodb.Table(os.environ['USERS_TABLE_NAME'])
     try:
         # Email is used as GSI with index name of 'EmailIndex'
         response = table.query(

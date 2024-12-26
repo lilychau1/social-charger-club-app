@@ -10,7 +10,7 @@ from datetime import datetime
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
 cognito = boto3.client('cognito-idp')
-table_name = os.environ.get('USER_TABLE_NAME')
+table_name = os.environ.get('USERS_TABLE_NAME')
 table = dynamodb.Table(table_name)
 user_pool_id = os.environ.get('USER_POOL_ID')
 client_id = os.environ.get('USER_POOL_CLIENT_ID')

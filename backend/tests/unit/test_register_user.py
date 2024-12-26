@@ -12,19 +12,15 @@ def apigw_event():
         "body": json.dumps({
             "email": "test@example.com",
             "username": "testuser",
-            "user_type": "consumer"
+            "userType": "consumer"
         })
     }
-    
-@patch.dict(os.environ, {
-    'USER_POOL_ID': 'mock-user-pool-id',
-    'USER_POOL_CLIENT_ID': 'mock-client-id'
-})
+
 @patch('register_user.app.table')
 @patch('register_user.app.cognito')
 @patch('register_user.app.generate_ids')
 def test_lambda_handler_success(mock_generate_id, mock_cognito, mock_table, apigw_event):
-    mock_generate_id.return_value = {'user_id', 'consumer_id', 'producer_id'}
+    mock_generate_id.return_value = {'userId', 'consumerId', 'producerId'}
     mock_cognito.sign_up.return_value = {}
     mock_table.put_item.return_value = {}
 
@@ -32,15 +28,11 @@ def test_lambda_handler_success(mock_generate_id, mock_cognito, mock_table, apig
 
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
-    assert 'user_id' in body
-    assert 'consumer_id' in body
-    assert 'producer_id' in body
+    assert 'userId' in body
+    assert 'consumerId' in body
+    assert 'producerId' in body
     assert body['message'].startswith("User data for")
 
-@patch.dict(os.environ, {
-    'USER_POOL_ID': 'mock-user-pool-id',
-    'USER_POOL_CLIENT_ID': 'mock-client-id'
-})
 @patch('register_user.app.cognito')
 def test_lambda_handler_cognito_error(mock_cognito, apigw_event):
     error_response = {'Error': {'Code': 'UsernameExistsException', 'Message': 'User already exists'}}
@@ -53,10 +45,6 @@ def test_lambda_handler_cognito_error(mock_cognito, apigw_event):
     assert 'error' in body
     assert 'User already exists' in body['error']
  
-@patch.dict(os.environ, {
-    'USER_POOL_ID': 'mock-user-pool-id',
-    'USER_POOL_CLIENT_ID': 'mock-client-id'
-})
 @patch('register_user.app.cognito')
 @patch('register_user.app.table')
 def test_lambda_handler_dynamodb_error(mock_table, mock_cognito, apigw_event):
@@ -69,10 +57,6 @@ def test_lambda_handler_dynamodb_error(mock_table, mock_cognito, apigw_event):
     body = json.loads(response['body'])
     assert 'error' in body
 
-@patch.dict(os.environ, {
-    'USER_POOL_ID': 'mock-user-pool-id',
-    'USER_POOL_CLIENT_ID': 'mock-client-id'
-})
 def test_lambda_handler_options(apigw_event):
     apigw_event['httpMethod'] = 'OPTIONS'
     response = lambda_handler(apigw_event, "")
