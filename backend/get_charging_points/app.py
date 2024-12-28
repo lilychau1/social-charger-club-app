@@ -69,6 +69,8 @@ def lambda_handler(event, context):
                     'chargingPointId': point['chargingPointId'], 
                     'stationName': point['stationName'], 
                     'primaryElectricitySource': point['primaryElectricitySource'], 
+                    'latitude': float(point_location[0]), 
+                    'longitude': float(point_location[1]), 
                 })
 
         return {
