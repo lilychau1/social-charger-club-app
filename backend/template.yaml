@@ -169,6 +169,25 @@ Resources:
           Properties:
             Path: /store-producers-charging-points
             Method: post
+  GetChargingPointsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-GetChargingPoints"
+      CodeUri: get_charging_points/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 3
+      Environment:
+        Variables:
+          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            Path: /get-charging-points
+            Method: post
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
@@ -221,7 +240,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref UserPool
-      ClientName: !Sub "${Environment}-EVChargingUserPoolClient"  # Uses Environment to differentiate between dev and prod
+      ClientName: !Sub "${Environment}-EVChargingUserPoolClient"
       GenerateSecret: false
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
