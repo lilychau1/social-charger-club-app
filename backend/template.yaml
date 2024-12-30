@@ -17,7 +17,7 @@ Parameters:
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 10
 
     Tracing: Active
     # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
@@ -25,6 +25,7 @@ Globals:
       LogFormat: JSON
   Api:
     TracingEnabled: true
+
 Resources:
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
@@ -58,6 +59,7 @@ Resources:
         - AttributeName: producerId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+
   EVChargingConsumersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -69,11 +71,14 @@ Resources:
         - AttributeName: consumerId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+
   EVChargingChargingPointsTable:
     Type: AWS::DynamoDB::Table
     Properties: 
       TableName: !Sub "${Environment}-EVCharging_ChargingPoints"
       AttributeDefinitions: 
+        - AttributeName: oocpChargePointId
+          AttributeType: S
         - AttributeName: chargingPointId
           AttributeType: S
         - AttributeName: producerId
@@ -81,18 +86,50 @@ Resources:
         - AttributeName: location
           AttributeType: S
       KeySchema: 
-        - AttributeName: chargingPointId
-          KeyType: HASH 
-      BillingMode: PAY_PER_REQUEST
+        - AttributeName: oocpChargePointId
+          KeyType: HASH  # Set oocpChargePointId as the partition key (HASH)
       GlobalSecondaryIndexes:
+        - IndexName: chargingPointIdIndex
+          KeySchema:
+            - AttributeName: chargingPointId
+              KeyType: HASH  # GSI with chargingPointId as partition key
+          Projection:
+            ProjectionType: ALL
         - IndexName: ProducerIdIndex
           KeySchema:
             - AttributeName: producerId
-              KeyType: HASH
+              KeyType: HASH  # GSI with producerId as partition key
             - AttributeName: location
+              KeyType: RANGE  # GSI with location as sort key
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  EVChargingChargingPointEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: !Sub "${Environment}-EVCharging_ChargingPointEvents"
+      AttributeDefinitions: 
+        - AttributeName: eventId
+          AttributeType: S
+        - AttributeName: oocpChargePointId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: eventId
+          KeyType: HASH 
+      GlobalSecondaryIndexes:
+        - IndexName: oocpChargePointIdIndex
+          KeySchema:
+            - AttributeName: oocpChargePointId
+              KeyType: HASH
+            - AttributeName: timestamp
               KeyType: RANGE
           Projection:
-            ProjectionType: ALL  
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -108,6 +145,7 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+
   RegisterUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -150,6 +188,7 @@ Resources:
           Properties:
             Path: /store-new-user-details
             Method: post
+
   StoreProducersChargingPointsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -169,6 +208,7 @@ Resources:
           Properties:
             Path: /store-producers-charging-points
             Method: post
+
   GetChargingPointsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -176,7 +216,7 @@ Resources:
       CodeUri: get_charging_points/
       Handler: app.lambda_handler
       Runtime: python3.13
-      Timeout: 3
+      Timeout: 10
       Environment:
         Variables:
           CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
@@ -188,19 +228,109 @@ Resources:
           Properties:
             Path: /get-charging-points
             Method: post
-  ApplicationResourceGroup:
-    Type: AWS::ResourceGroups::Group
+
+  IngestChargingPointAvailabilityIoTFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      Name:
-        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
-      ResourceQuery:
-        Type: CLOUDFORMATION_STACK_1_0
-  ApplicationInsightsMonitoring:
-    Type: AWS::ApplicationInsights::Application
+      FunctionName: !Sub "${Environment}-IngestChargingPointAvailabilityIoT"
+      CodeUri: ingest_charging_point_availability_iot/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Policies: 
+        - DynamoDBCrudPolicy: 
+            TableName: !Ref EVChargingChargingPointEventsTable
+        - DynamoDBCrudPolicy: 
+            TableName: !Ref EVChargingChargingPointsTable
+        - Statement:
+            - Effect: Allow
+              Action: 
+                - "iot:Publish"
+              Resource: 
+                - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/*"
+      Environment:
+        Variables:
+          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
+          CHARGING_POINT_EVENTS_TABLE_NAME: !Ref EVChargingChargingPointEventsTable
+          IOT_ENDPOINT: !Ref IoTEndpoint
+
+  IoTEndpoint: 
+    Type: AWS::IoT::Thing
+    Properties: 
+      ThingName: !Sub "${Environment}-EVChargingPointGateway"
+
+  ChargingPointWebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
     Properties:
-      ResourceGroupName:
-        Ref: ApplicationResourceGroup
-      AutoConfigurationEnabled: 'true'
+      Name: ChargingPointWebSocketApi
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  WebSocketStage: 
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      StageName: prod
+      AutoDeploy: true
+
+  ConnectRoute: 
+    Type: AWS::ApiGatewayV2::Route
+    Properties: 
+      ApiId: !Ref ChargingPointWebSocketApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      OperationName: ConnectRoute
+      Target: !Join
+        - "/"
+        - - "integrations"
+          - !Ref ConnectIntegration
+
+  ConnectIntegration: 
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: 
+        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
+
+  DisconnectRoute: 
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      OperationName: DisconnectRoute
+      Target: !Join
+        - "/"
+        - - "integrations"
+          - !Ref DisconnectIntegration
+  
+  DisconnectIntegration: 
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: 
+        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
+
+  MessageRoute: 
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      RouteKey: $default
+      AuthorizationType: NONE
+      OperationName: MessageRoute
+      Target: !Join 
+        - "/"
+        - - "integrations"
+          - !Ref MessageIntegration
+          
+  MessageIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChargingPointWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: 
+        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -236,6 +366,7 @@ Resources:
       Policies:
         PasswordPolicy:
           MinimumLength: 8
+          
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -259,32 +390,3 @@ Resources:
         - custom:userId
         - custom:consumerId
         - custom:producerId
-
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value: !GetAtt HelloWorldFunctionRole.Arn
-  RegisterUserApi:
-    Description: API Gateway endpoint URL for Prod stage for Register User function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register-user/"
-  RegisterUserFunction:
-    Description: Register User Lambda Function ARN
-    Value: !GetAtt RegisterUserFunction.Arn
-  RegisterUserFunctionIamRole:
-    Description: Implicit IAM Role created for Register User function
-    Value: !GetAtt RegisterUserFunctionRole.Arn
-  UserPoolId:
-    Value: !Ref UserPool
-    Description: ID of the Cognito User Pool
-  UserPoolClientId:
-    Value: !Ref UserPoolClient
-    Description: ID of the Cognito User Pool Client

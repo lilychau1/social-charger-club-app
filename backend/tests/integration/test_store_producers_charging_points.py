@@ -25,6 +25,7 @@ def test_charging_point():
             {
                 'stationName': 'Station A',
                 'address': '123 Main St',
+                'oocpChargePointId': 'C123456', 
                 'latitude': '40.7128',
                 'longitude': '-74.0060',
                 'chargingSpeed': ['Level 2', 'Level 3'],
