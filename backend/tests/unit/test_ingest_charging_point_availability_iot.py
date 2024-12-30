@@ -1,150 +1,128 @@
 import json
 import unittest
-from unittest.mock import patch, MagicMock
-from ingest_charging_point_availability_iot.app import lambda_handler, handle_connect, handle_disconnect, handle_message, append_event_to_dynamodb
+from unittest.mock import patch, MagicMock, ANY
+from ingest_charging_point_availability_iot.app import lambda_handler, handle_device_status, handle_action, extract_oocp_charge_point_id_from_topic
 
 class TestLambdaFunction(unittest.TestCase):
 
     @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    def test_handle_connect(self, mock_table):
+    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    def test_handle_device_status_online(self, mock_charging_point_events_table, mock_charging_points_table):
 
-        mock_table.update_item.return_value = 'Updated'
-        
-        connection_id = 'test-connection-id'
+        mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+        mock_charging_point_events_table.put_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+
         oocp_charge_point_id = 'CP123'
-        timestamp = '2024-12-29T12:00:00Z'
-        
-        response = handle_connect(connection_id, oocp_charge_point_id, timestamp)
-        
-        # Check if update_item was called correctly
-        mock_table.update_item.assert_called_once_with(
+        status = 'online'
+
+        response = handle_device_status(oocp_charge_point_id, status)
+
+        mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': oocp_charge_point_id},
-            UpdateExpression='SET  isConnected = :connected, statusUpdatedAt = :timestamp',
+            UpdateExpression='SET isConnected = :connected, statusUpdatedAt = :timestamp',
             ExpressionAttributeValues={
                 ':connected': True,
-                ':timestamp': timestamp
+                ':timestamp': ANY
             }
         )
-        
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('Connected', response['body'])
+
+        mock_charging_point_events_table.put_item.assert_called_once_with(
+            Item={
+                'eventId': ANY,  # We use ANY since UUID is generated dynamically
+                'oocpChargePointId': oocp_charge_point_id,
+                'timestamp': ANY,
+                'eventType': 'connect',
+                'message': {'status': status}
+            }
+        )
 
     @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    def test_handle_disconnect(self, mock_table):
-        mock_table.update_item.return_value = 'Updated'
-        
-        connection_id = 'test-connection-id'
+    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    def test_handle_device_status_offline(self, mock_charging_point_events_table, mock_charging_points_table):
+        mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+        mock_charging_point_events_table.put_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+
         oocp_charge_point_id = 'CP123'
-        timestamp = '2024-12-29T12:00:00Z'
+        status = 'offline'
         
-        response = handle_disconnect(connection_id, oocp_charge_point_id, timestamp)
-        
-        mock_table.update_item.assert_called_once_with(
+        response = handle_device_status(oocp_charge_point_id, status)
+
+        mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': oocp_charge_point_id},
-            UpdateExpression='SET  isDisconnected = :disconnected, statusUpdatedAt = :timestamp',
+            UpdateExpression='SET isConnected = :connected, statusUpdatedAt = :timestamp',
             ExpressionAttributeValues={
-                ':disconnected': True,
-                ':timestamp': timestamp
+                ':connected': False,
+                ':timestamp': ANY
             }
         )
-        
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('Disconnected', response['body'])
+
+        mock_charging_point_events_table.put_item.assert_called_once_with(
+            Item={
+                'eventId': ANY,  # UUID is dynamically generated
+                'oocpChargePointId': oocp_charge_point_id,
+                'timestamp': ANY,
+                'eventType': 'disconnect',
+                'message': {'status': status}
+            }
+        )
 
     @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    def test_handle_message_status_notification(self, mock_table):
+    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    def test_handle_action_start_transaction(self, mock_charging_point_events_table, mock_charging_points_table):
 
-        mock_table.update_item.return_value = 'Updated'
-        
-        connection_id = 'test-connection-id'
+        mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+        mock_charging_point_events_table.put_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
+
         oocp_charge_point_id = 'CP123'
-        timestamp = '2024-12-29T12:00:00Z'
+        action = 'StartTransaction'
         
         message_body = {
-            'action': 'StatusNotification',
-            'payload': {
-                'status': 'Available'
-            }
+            'action': action,
+            'payload': {}
         }
-        
-        response = handle_message(connection_id, oocp_charge_point_id, timestamp, message_body)
-        
-        mock_table.update_item.assert_called_once_with(
+
+        response = handle_action(action, oocp_charge_point_id, message_body)
+
+        mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': oocp_charge_point_id},
-            UpdateExpression=(
-                'SET isAvailable = :available, '
-                'statusUpdatedAt = :timestamp'
-            ),
+            UpdateExpression='SET isAvailable = :available, statusUpdatedAt = :timestamp',
             ExpressionAttributeValues={
-                ':available': True,
-                ':timestamp': timestamp
+                ':available': False,
+                ':timestamp': ANY
             }
         )
-        
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('Message processed', response['body'])
 
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    def test_handle_message_start_transaction_notification(self, mock_table):
-        # Test for handling error notifications
-        connection_id = 'test-connection-id'
-        oocp_charge_point_id = 'CP123'
-        timestamp = '2024-12-29T12:00:00Z'
-        
-        message_body = {
-            'action': 'StartTransaction',
-            'payload': {
-                'some_content'
+        mock_charging_point_events_table.put_item.assert_called_once_with(
+            Item={
+                'eventId': ANY,
+                'oocpChargePointId': oocp_charge_point_id,
+                'timestamp': ANY,
+                'eventType': action,
+                'message': message_body
             }
-        }
-        
-        response = handle_message(connection_id, oocp_charge_point_id, timestamp, message_body)
-        
-        # Assuming you have a way to log or handle errors in your implementation
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('Message processed', response['body'])
-    
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    def test_handle_message_irrelevant_notification(self, mock_table):
-        # Test for handling error notifications
-        connection_id = 'test-connection-id'
-        oocp_charge_point_id = 'CP123'
-        timestamp = '2024-12-29T12:00:00Z'
-        
-        message_body = {
-            'action': 'irrelevantAction',
-            'payload': {
-                'some_content'
-            }
-        }
-        
-        response = handle_message(connection_id, oocp_charge_point_id, timestamp, message_body)
-        
-        # Assuming you have a way to log or handle errors in your implementation
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('No action', response['body'])
-    
+        )
+
     @patch('ingest_charging_point_availability_iot.app.charging_points_table')
     @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
     def test_lambda_handler_success(self, mock_charging_points_table, mock_charging_point_events_table):
         event = {
-            'httpMethod': 'POST',
-            'path': '/connect',
-            'requestContext': {
-                'routeKey': '$connect', 
-                'connectionId': 'test-connection-id'
-            }, 
-            'body': json.dumps({
-                'connectionId': 'test-connection-id',
-                'oocpChargePointId': 'CP123',
-                'timestamp': '2024-12-29T12:00:00Z'
-            })
+            'Records': [
+                {
+                    'topic': 'charging_points/CP123/status',
+                    'message': json.dumps({'status': 'online'})
+                },
+                {
+                    'topic': 'charging_points/CP123/action',
+                    'message': json.dumps({'action': 'StartTransaction', 'payload': {}})
+                }
+            ]
         }
-        
+
+        # Simulate Lambda execution
         response = lambda_handler(event, None)
 
         self.assertEqual(response['statusCode'], 200)
-        self.assertIn('message', response['body'])
-    
+        self.assertIn('Messages processed successfully', response['body'])
+
 if __name__ == '__main__':
     unittest.main()

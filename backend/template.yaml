@@ -167,6 +167,7 @@ Resources:
           Properties:
             Path: /register-user
             Method: post
+
   StoreNewUserDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -229,6 +230,61 @@ Resources:
             Path: /get-charging-points
             Method: post
 
+  # Add IoT Core resources
+  IoTPolicy:
+    Type: AWS::IoT::Policy
+    Properties:
+      PolicyName: !Sub "${Environment}-EVChargingIoTPolicy"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - iot:Connect
+              - iot:Subscribe
+              - iot:Publish
+              - iot:Receive
+            Resource: !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:*"
+
+  IoTThing:
+    Type: AWS::IoT::Thing
+    Properties:
+      ThingName: !Sub "${Environment}-EVChargingThing"
+
+  IoTTopicRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: !Sub "${Environment}_ChargingPointUpdates"
+      TopicRulePayload:
+        Sql: "SELECT * FROM 'charging_points/updates'"
+        Actions:
+          - DynamoDBv2:
+              PutItem:
+                TableName: !Ref EVChargingChargingPointEventsTable
+              RoleArn: !GetAtt IoTRole.Arn
+        AwsIotSqlVersion: "2016-03-23"
+
+  IoTRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Environment}-IoTRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "iot.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Sub "${Environment}-IoTPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${EVChargingChargingPointEventsTable}"
+
   IngestChargingPointAvailabilityIoTFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -241,97 +297,16 @@ Resources:
             TableName: !Ref EVChargingChargingPointEventsTable
         - DynamoDBCrudPolicy: 
             TableName: !Ref EVChargingChargingPointsTable
-        - Statement:
-            - Effect: Allow
-              Action: 
-                - "iot:Publish"
-              Resource: 
-                - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/*"
       Environment:
         Variables:
           CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
           CHARGING_POINT_EVENTS_TABLE_NAME: !Ref EVChargingChargingPointEventsTable
-          IOT_ENDPOINT: !Ref IoTEndpoint
-
-  IoTEndpoint: 
-    Type: AWS::IoT::Thing
-    Properties: 
-      ThingName: !Sub "${Environment}-EVChargingPointGateway"
-
-  ChargingPointWebSocketApi:
-    Type: AWS::ApiGatewayV2::Api
-    Properties:
-      Name: ChargingPointWebSocketApi
-      ProtocolType: WEBSOCKET
-      RouteSelectionExpression: "$request.body.action"
-
-  WebSocketStage: 
-    Type: AWS::ApiGatewayV2::Stage
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      StageName: prod
-      AutoDeploy: true
-
-  ConnectRoute: 
-    Type: AWS::ApiGatewayV2::Route
-    Properties: 
-      ApiId: !Ref ChargingPointWebSocketApi
-      RouteKey: $connect
-      AuthorizationType: NONE
-      OperationName: ConnectRoute
-      Target: !Join
-        - "/"
-        - - "integrations"
-          - !Ref ConnectIntegration
-
-  ConnectIntegration: 
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: 
-        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
-
-  DisconnectRoute: 
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      RouteKey: $disconnect
-      AuthorizationType: NONE
-      OperationName: DisconnectRoute
-      Target: !Join
-        - "/"
-        - - "integrations"
-          - !Ref DisconnectIntegration
-  
-  DisconnectIntegration: 
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: 
-        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
-
-  MessageRoute: 
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      RouteKey: $default
-      AuthorizationType: NONE
-      OperationName: MessageRoute
-      Target: !Join 
-        - "/"
-        - - "integrations"
-          - !Ref MessageIntegration
-          
-  MessageIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref ChargingPointWebSocketApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: 
-        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestChargingPointAvailabilityIoTFunction.Arn}/invocations
-
+      Events:
+        MQTTEvent:
+          Type: IoTRule
+          Properties:
+            AwsIotSqlVersion: "2016-03-23"
+            Sql: "SELECT * FROM 'charging_points/availability'"
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
