@@ -27,6 +27,12 @@ Globals:
     TracingEnabled: true
 
 Resources:
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${Environment}-EVChargingApi"
+      Description: "API Gateway for EV Charging"
+
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -143,6 +149,7 @@ Resources:
         HelloWorld:
           Type: Api
           Properties:
+            RestApiId: !Ref ApiGateway
             Path: /hello
             Method: get
 
@@ -165,6 +172,7 @@ Resources:
         RegisterUser:
           Type: Api
           Properties:
+            RestApiId: !Ref ApiGateway
             Path: /register-user
             Method: post
 
@@ -187,6 +195,7 @@ Resources:
         RegisterUser:
           Type: Api
           Properties:
+            RestApiId: !Ref ApiGateway
             Path: /store-new-user-details
             Method: post
 
@@ -207,6 +216,7 @@ Resources:
         RegisterUser:
           Type: Api
           Properties:
+            RestApiId: !Ref ApiGateway
             Path: /store-producers-charging-points
             Method: post
 
@@ -227,10 +237,66 @@ Resources:
         RegisterUser:
           Type: Api
           Properties:
+            RestApiId: !Ref ApiGateway
             Path: /get-charging-points
             Method: post
 
-  # Add IoT Core resources
+  IngestChargingPointAvailabilityIoTFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-IngestChargingPointAvailabilityIoT"
+      CodeUri: ingest_charging_point_availability_iot/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Policies: 
+        - DynamoDBCrudPolicy: 
+            TableName: !Ref EVChargingChargingPointEventsTable
+        - DynamoDBCrudPolicy: 
+            TableName: !Ref EVChargingChargingPointsTable
+      Environment:
+        Variables:
+          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
+          CHARGING_POINT_EVENTS_TABLE_NAME: !Ref EVChargingChargingPointEventsTable
+      Events:
+        MQTTEvent:
+          Type: IoTRule
+          Properties:
+            AwsIotSqlVersion: "2016-03-23"
+            Sql: "SELECT * FROM 'charging_points/availability'"
+
+  BookChargingPointFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-BookChargingPoint"
+      CodeUri: book_charging_point/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
+          PARAMETER_PREFIX: !Sub "${Environment}-" 
+          SECRET_ARN: !Ref EVChargingSecrets 
+          API_GATEWAY_ID: !Ref ApiGateway
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: '*'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'secretsmanager:GetSecretValue'
+              Resource: !Ref EVChargingSecrets
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /book-charging-point
+            Method: post
+
   IoTPolicy:
     Type: AWS::IoT::Policy
     Properties:
@@ -285,28 +351,6 @@ Resources:
                   - dynamodb:PutItem
                 Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${EVChargingChargingPointEventsTable}"
 
-  IngestChargingPointAvailabilityIoTFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${Environment}-IngestChargingPointAvailabilityIoT"
-      CodeUri: ingest_charging_point_availability_iot/
-      Handler: app.lambda_handler
-      Runtime: python3.13
-      Policies: 
-        - DynamoDBCrudPolicy: 
-            TableName: !Ref EVChargingChargingPointEventsTable
-        - DynamoDBCrudPolicy: 
-            TableName: !Ref EVChargingChargingPointsTable
-      Environment:
-        Variables:
-          CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
-          CHARGING_POINT_EVENTS_TABLE_NAME: !Ref EVChargingChargingPointEventsTable
-      Events:
-        MQTTEvent:
-          Type: IoTRule
-          Properties:
-            AwsIotSqlVersion: "2016-03-23"
-            Sql: "SELECT * FROM 'charging_points/availability'"
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -365,3 +409,30 @@ Resources:
         - custom:userId
         - custom:consumerId
         - custom:producerId
+  
+  EVChargingSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${Environment}-EVChargingSecrets"
+      Description: "API Key for external API service"
+      SecretString: !Sub |
+        {
+          "VIRTA_API_KEY": "virta-api-key", 
+          "EVBOX_API_KEY": "evbox-api-key"
+        }
+
+  VirtaApiGatewayUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "${Environment}-VIRTA_API_GATEWAY_URL"
+      Description: "API Gateway URL for Virta"
+      Type: String
+      Value: "https://mock-api-gateway.virta.com"
+  
+  VirtaResourceIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "${Environment}-VIRTA_RESOURCE_ID"
+      Description: "Virta resource ID"
+      Type: String
+      Value: "test-virta-resource-id"
