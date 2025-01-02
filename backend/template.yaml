@@ -136,6 +136,51 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
+  EVChargingTransactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-EVCharging_Transactions"
+      AttributeDefinitions:
+        - AttributeName: transactionId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: producerIdWithIsSuccessful
+          AttributeType: S
+        - AttributeName: consumerIdWithIsSuccessful
+          AttributeType: S
+        - AttributeName: chargingPointIdWithIsSuccessful
+          AttributeType: S
+      KeySchema:
+        - AttributeName: transactionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: consumerIdWithIsSuccessfulIndex
+          KeySchema:
+            - AttributeName: consumerIdWithIsSuccessful
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: producerIdWithIsSuccessfulIndex
+          KeySchema:
+            - AttributeName: producerIdWithIsSuccessful
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: chargingPointIdWithIsSuccessfulIndex
+          KeySchema:
+            - AttributeName: chargingPointIdWithIsSuccessful
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -276,7 +321,7 @@ Resources:
         Variables:
           CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
           PARAMETER_PREFIX: !Sub "${Environment}-" 
-          SECRET_ARN: !Ref EVChargingSecrets 
+          SECRET_NAME: !Ref EVChargingSecrets 
           API_GATEWAY_ID: !Ref ApiGateway
       Policies:
         - SSMParameterReadPolicy:
@@ -418,7 +463,8 @@ Resources:
       SecretString: !Sub |
         {
           "VIRTA_API_KEY": "virta-api-key", 
-          "EVBOX_API_KEY": "evbox-api-key"
+          "EVBOX_API_KEY": "evbox-api-key", 
+          "STRIPE_API_KEY": "mock-stripe-api-key"
         }
 
   VirtaApiGatewayUrlParameter:

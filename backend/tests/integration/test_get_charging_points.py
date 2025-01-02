@@ -12,18 +12,21 @@ def dynamodb_table():
     # Add test data
     test_data = [
         {
+            'oocpChargePointId': 'test-cp1',
             'chargingPointId': 'test-cp1',
             'stationName': 'Test Station A',
             'primaryElectricitySource': 'Solar',
             'location': '51.5074,-0.1278'  # London
         },
         {
+            'oocpChargePointId': 'test-cp2',
             'chargingPointId': 'test-cp2',
             'stationName': 'Test Station B',
             'primaryElectricitySource': 'Grid',
             'location': '55.9533,-3.1883'  # Edinburgh
         },
         {
+            'oocpChargePointId': 'test-cp3',
             'chargingPointId': 'test-cp3',
             'stationName': 'Test Station C',
             'primaryElectricitySource': 'Wind',
@@ -33,12 +36,12 @@ def dynamodb_table():
     
     for item in test_data:
         table.put_item(Item=item)
-    
+
     yield table
     
     # Clean up test data
     for item in test_data:
-        table.delete_item(Key={'chargingPointId': item['chargingPointId']})
+        table.delete_item(Key={'oocpChargePointId': item['oocpChargePointId']})
 
 def test_integration_lambda_handler_success(dynamodb_table):
     event = {
@@ -54,6 +57,7 @@ def test_integration_lambda_handler_success(dynamodb_table):
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert len(body) > 0
+
     assert any(point['chargingPointId'] == 'test-cp1' for point in body)
     assert any(point['chargingPointId'] == 'test-cp3' for point in body)
     assert all(point['chargingPointId'] != 'test-cp2' for point in body)
@@ -101,7 +105,6 @@ def test_integration_lambda_handler_missing_postcode(dynamodb_table):
     
     assert response['statusCode'] == 400
     body = json.loads(response['body'])
-    breakpoint()
     assert 'error' in body
 
 def test_integration_lambda_handler_options_request(dynamodb_table):

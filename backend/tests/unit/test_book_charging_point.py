@@ -7,7 +7,7 @@ from book_charging_point.app import lambda_handler, update_dynamodb_status, send
 class TestBookChargingPoint(unittest.TestCase):
     @patch('book_charging_point.app.api_gateway_client')
     @patch('book_charging_point.app.charging_points_table')
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('book_charging_point.app.get_parameter_or_secret')
     def test_lambda_handler_success(self, mock_get_parameter_or_secret, mock_charging_points_table, mock_api_gateway_client):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'

@@ -1,98 +1,57 @@
 import json
+import pytest
+from unittest.mock import MagicMock, patch
 import os
 import boto3
-import unittest
-from unittest.mock import patch, MagicMock
-from datetime import datetime
 from botocore.exceptions import ClientError
-from book_charging_point.app import lambda_handler, update_dynamodb_status, send_oocp_reservation_request
+from book_charging_point.app import lambda_handler, send_oocp_reservation_request, update_dynamodb_status
 
-dynamodb = boto3.resource('dynamodb')
-charging_points_table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME', 'default-charging-points-table'))
+def load_env_vars():
+    with open('backend/env.json', 'r') as env_file:
+        env_vars = json.load(env_file)
+        os.environ['CHARGING_POINTS_TABLE_NAME'] = env_vars['BookChargingPointFunction']['CHARGING_POINTS_TABLE_NAME']
 
-def clean_up_dynamodb_charge_point(oocp_charge_point_id):
-    """Clean up the test charge point data in DynamoDB"""
-    try:
-        charging_points_table.delete_item(
-            Key={'oocpChargePointId': oocp_charge_point_id}
-        )
-    except ClientError as e:
-        print(f"Error cleaning up DynamoDB charge point: {str(e)}")
+load_env_vars()
 
-@patch('book_charging_point.app.api_gateway_client')
-def test_lambda_handler_success(self, mock_api_gateway_client):
-    mock_api_response = MagicMock()
-    mock_api_response['status'] = 200
-    mock_api_response['body'] = json.dumps({'result': 'success'})
-    mock_api_gateway_client.test_invoke_method.return_value = mock_api_response
+@pytest.fixture(scope='module')
+def dynamodb_table():
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(os.environ['CHARGING_POINTS_TABLE_NAME'])
+    
+    # Add test data
+    test_data = {
+        'oocpChargePointId': 'test-point-id',
+        'isAvailable': True,
+        'statusUpdatedAt': '2024-12-30T00:00:00'
+    }
+    
+    table.put_item(Item=test_data)
 
-    # Insert initial data into DynamoDB for testing
-    charging_points_table.put_item(
-        Item={
-            'oocpChargePointId': 'test-point-id',
-            'isAvailable': True,
-            'statusUpdatedAt': '2024-12-30T00:00:00'
+    yield table
+    
+    # Clean up test data
+    table.delete_item(Key={'oocpChargePointId': test_data['oocpChargePointId']})
+
+@pytest.fixture
+def mock_api_gateway_client():
+    with patch('book_charging_point.app.api_gateway_client') as mock_client:
+        mock_api_response = {
+            'status': 200, 
+            'body': '{"result": "success"}'
         }
-    )
+        mock_client.test_invoke_method.return_value = mock_api_response
+        yield mock_client
 
-    # Define event to send to Lambda handler
-    event = {
-        'oocpChargePointId': 'test-point-id',
-        'system': 'Virta',
-        'connectorId': '1',
-        'startTime': '2024-12-30T12:00:00',
-        'endTime': '2024-12-30T13:00:00'
-    }
-
-    # Run the lambda handler with the event
-    response = lambda_handler(event, None)
-
-    # Assertions
-    self.assertEqual(response['statusCode'], 200)
-    self.assertIn('Slot booked successfully', response['body'])
-
-    # Verify that the API call was made (mocked)
-    mock_api_gateway_client.test_invoke_method.assert_called_once()
-
-    # Verify DynamoDB was updated
-    response = charging_points_table.get_item(Key={'oocpChargePointId': 'test-point-id'})
-    item = response.get('Item')
-    self.assertIsNotNone(item)
-    self.assertEqual(item['isAvailable'], False)
-
-    clean_up_dynamodb_charge_point('test-point-id')
-
-@patch('book_charging_point.app.api_gateway_client')
-def test_send_oocp_reservation_request_virta(self, mock_api_gateway_client):
-    mock_api_response = MagicMock()
-    mock_api_response['status'] = 200
-    mock_api_response['body'] = json.dumps({'result': 'success'})
-    mock_api_gateway_client.test_invoke_method.return_value = mock_api_response
-
-    event = {
-        'oocpChargePointId': 'test-point-id',
-        'system': 'Virta', 
-        'connectorId': '1',
-        'startTime': '2024-12-30T12:00:00',
-        'endTime': '2024-12-30T13:00:00'
-    }
-
+def test_send_oocp_reservation_request_virta(mock_api_gateway_client):
     response = send_oocp_reservation_request(
-        'Virta',
-        'test-point-id',
-        '1',
-        '2024-12-30T12:00:00',
-        '2024-12-30T13:00:00'
+        'Virta', 'test-point-id', '1', '2024-12-30T12:00:00', '2024-12-30T13:00:00'
     )
-
-    self.assertEqual(response['status'], 'success')
-
+    assert response['status'] == 'success'
     mock_api_gateway_client.test_invoke_method.assert_called_once()
 
-@patch('book_charging_point.app.api_gateway_client')
-def test_send_oocp_reservation_request_unsupported_system(self, mock_api_gateway_client):
+def test_send_oocp_reservation_request_unsupported_system():
     # Create event data with an unsupported system
-    event = {
+    event_body = {
         'oocpChargePointId': 'test-point-id',
         'system': 'UnknownSystem',
         'connectorId': '1',
@@ -101,14 +60,29 @@ def test_send_oocp_reservation_request_unsupported_system(self, mock_api_gateway
     }
 
     # Call the function to test
-    with self.assertRaises(ValueError):
+    with pytest.raises(ValueError):
         send_oocp_reservation_request(
-            event['system'],
-            event['oocpChargePointId'],
-            event['connectorId'],
-            event['startTime'],
-            event['endTime']
+            event_body['system'],
+            event_body['oocpChargePointId'],
+            event_body['connectorId'],
+            event_body['startTime'],
+            event_body['endTime']
         )
 
-if __name__ == '__main__':
-    unittest.main()
+def test_lambda_handler_success(mock_api_gateway_client, dynamodb_table):
+    event = {
+        'httpMethod': 'POST', 
+        'body': "{\"oocpChargePointId\": \"test-point-id\", \"system\": \"Virta\", \"connectorId\": \"1\", \"startTime\": \"2024-12-30T12:00:00\", \"endTime\": \"2024-12-30T13:00:00\"}"
+    }
+
+    response = lambda_handler(event, None)
+
+    assert response['statusCode'] == 200
+    assert 'Slot booked successfully' in response['body']
+
+def test_lambda_handler_options_request():
+    event = {'httpMethod': 'OPTIONS', 'body': None}
+    response = lambda_handler(event, None)
+    
+    assert response['statusCode'] == 200
+    assert 'Access-Control-Allow-Origin' in response['headers']

@@ -11,20 +11,38 @@ api_gateway_client = boto3.client('apigateway')
 ssm_client = boto3.client('ssm')
 secrets_client = boto3.client('secretsmanager')
 
+secret_name = os.environ.get('SECRET_NAME')
 PARAMETER_PREFIX = os.environ.get('PARAMETER_PREFIX')
 
+cors_header = {
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-Amz-Security-Token'
+}
+
 def lambda_handler(event, context):
+    if event['httpMethod'] == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': cors_header
+        }
+        
     try:
+        if 'body' in event:
+            event_body = json.loads(event['body'])
+        else:
+            raise ValueError("Missing 'body' field in event.")
+
         required_fields = ['oocpChargePointId', 'system', 'connectorId', 'startTime', 'endTime']
-        if not all(field in event for field in required_fields):
+        if not all(field in event_body for field in required_fields):
             raise ValueError("Missing required input fields.")
 
-        oocp_charge_point_id = event['oocpChargePointId']
-        system = event['system']
-        connector_id = event['connectorId']
-        start_time = event['startTime']
-        end_time = event['endTime']
-        
+        oocp_charge_point_id = event_body['oocpChargePointId']
+        system = event_body['system']
+        connector_id = event_body['connectorId']
+        start_time = event_body['startTime']
+        end_time = event_body['endTime']
+
         reservation_response = send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, start_time, end_time)
         
         if reservation_response.get('status') == 'success':
@@ -88,17 +106,16 @@ def get_ssm_parameter(param_name):
         print(f"Error fetching {param_name} from SSM: {str(e)}")
         return None
 
-def get_secret_value(secret_name):
+def get_secret_value(secret_key):
     try:
-        response = secrets_client.get_secret_value(
-            SecretId=secret_name
-        )
+        response = secrets_client.get_secret_value(SecretId=secret_name)
+
         if 'SecretString' in response:
-            return response['SecretString']
+            return json.loads(response['SecretString']).get(secret_key)
         else:
-            return response['SecretBinary']
+            return json.loads(response['SecretBinary']).get(secret_key)
     except ClientError as e:
-        print(f"Error fetching {secret_name} from Secrets Manager: {str(e)}")
+        print(f"Error fetching {secret_key} from Secrets Manager: {str(e)}")
         return None
 
 def send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, start_time, end_time):
@@ -126,7 +143,6 @@ def send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, st
             body=json.dumps(payload)
         )
         response_body = json.loads(response['body'])
-
         if response['status'] == 200:
             return {'status': 'success', 'message': response_body}
         else:

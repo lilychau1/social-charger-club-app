@@ -63,7 +63,7 @@ def lambda_handler(event, context):
             point_location = point['location'].split(',')
             point_lat_long = (float(point_location[0]), float(point_location[1]))
             distance = great_circle(user_lat_long, point_lat_long).miles
-            
+
             if distance <= radius: 
                 nearby_charging_points.append({
                     'chargingPointId': point['chargingPointId'], 
