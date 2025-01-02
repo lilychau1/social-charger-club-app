@@ -38,14 +38,16 @@ class TestBookChargingPoint(unittest.TestCase):
 
         mock_charging_points_table.update_item.return_value = 'Updated'
         timestamp = 'mock-timestamp'
-        update_dynamodb_charging_points_table_status('test-point-id', False, timestamp)
+        mock_consumer_id = 'mock-consumer-id'
+        update_dynamodb_charging_points_table_status('test-point-id', False, timestamp, mock_consumer_id)
 
         mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': 'test-point-id'},
             UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp",
             ExpressionAttributeValues={
                 ':is_available': False,
-                ':timestamp': unittest.mock.ANY
+                ':timestamp': unittest.mock.ANY, 
+                ':consumer_id': mock_consumer_id
             },
             ConditionExpression="attribute_exists(oocpChargePointId)"
         )

@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         
         if reservation_response.get('status') == 'success':
             timestamp = datetime.now().isoformat()
-            update_dynamodb_charging_points_table_status(oocp_charge_point_id, False, timestamp)
+            update_dynamodb_charging_points_table_status(oocp_charge_point_id, False, timestamp, consumer_id)
             log_booking_to_dynamodb(consumer_id, oocp_charge_point_id, start_time, end_time, timestamp)
             return {
                 'statusCode': 200,
@@ -86,14 +86,15 @@ def log_booking_to_dynamodb(
     except ClientError as e: 
         raise Exception(f"Error writing DynamoDB Bookings table: {e.response['Error']['Message']}")
         
-def update_dynamodb_charging_points_table_status(oocp_charge_point_id, is_available, timestamp):
+def update_dynamodb_charging_points_table_status(oocp_charge_point_id, is_available, timestamp, consumer_id):
     try:
         charging_points_table.update_item(
             Key={'oocpChargePointId': oocp_charge_point_id},
-            UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp",
+            UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp, currentBookedConsumerId = :consumer_id",
             ExpressionAttributeValues={
                 ':is_available': is_available,
-                ':timestamp': timestamp
+                ':timestamp': timestamp, 
+                ':consumer_id': consumer_id
             },
             ConditionExpression="attribute_exists(oocpChargePointId)"
         )

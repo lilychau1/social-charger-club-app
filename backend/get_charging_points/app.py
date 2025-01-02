@@ -71,6 +71,8 @@ def lambda_handler(event, context):
                     'primaryElectricitySource': point['primaryElectricitySource'], 
                     'latitude': float(point_location[0]), 
                     'longitude': float(point_location[1]), 
+                    'currentChargingConsumerId': point['currentChargingConsumerId'], 
+                    'isAvailable': point['isAvailable'], 
                 })
 
         return {
