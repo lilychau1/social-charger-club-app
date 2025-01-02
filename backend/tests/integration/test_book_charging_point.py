@@ -4,19 +4,24 @@ from unittest.mock import MagicMock, patch
 import os
 import boto3
 from botocore.exceptions import ClientError
-from book_charging_point.app import lambda_handler, send_oocp_reservation_request, update_dynamodb_status
+from book_charging_point.app import lambda_handler, send_oocp_reservation_request
+
+dynamodb = boto3.resource('dynamodb')
 
 def load_env_vars():
     with open('backend/env.json', 'r') as env_file:
         env_vars = json.load(env_file)
         os.environ['CHARGING_POINTS_TABLE_NAME'] = env_vars['BookChargingPointFunction']['CHARGING_POINTS_TABLE_NAME']
+        os.environ['BOOKINGS_TABLE_NAME'] = env_vars['BookChargingPointFunction']['BOOKINGS_TABLE_NAME']
+        os.environ['PARAMETER_PREFIX'] = env_vars['BookChargingPointFunction']['PARAMETER_PREFIX']
+        os.environ['SECRET_NAME'] = env_vars['BookChargingPointFunction']['SECRET_NAME']
+        os.environ['API_GATEWAY_ID'] = env_vars['BookChargingPointFunction']['API_GATEWAY_ID']
 
 load_env_vars()
 
 @pytest.fixture(scope='module')
-def dynamodb_table():
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['CHARGING_POINTS_TABLE_NAME'])
+def dynamodb_table_charging_points():
+    table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME'))
     
     # Add test data
     test_data = {
@@ -31,6 +36,17 @@ def dynamodb_table():
     
     # Clean up test data
     table.delete_item(Key={'oocpChargePointId': test_data['oocpChargePointId']})
+
+mock_booking_id = 'mock-booking_id'
+
+@pytest.fixture(scope='module')
+def dynamodb_table_bookings():
+    table = dynamodb.Table(os.environ['BOOKINGS_TABLE_NAME'])
+
+    yield table
+    
+    # Clean up test data
+    table.delete_item(Key={'bookingId': mock_booking_id})
 
 @pytest.fixture
 def mock_api_gateway_client():
@@ -69,10 +85,12 @@ def test_send_oocp_reservation_request_unsupported_system():
             event_body['endTime']
         )
 
-def test_lambda_handler_success(mock_api_gateway_client, dynamodb_table):
+@patch('book_charging_point.app.uuid')
+def test_lambda_handler_success(mock_uuid, mock_api_gateway_client, dynamodb_table_charging_points, dynamodb_table_bookings):
+    mock_uuid.uuid4.return_value = mock_booking_id
     event = {
         'httpMethod': 'POST', 
-        'body': "{\"oocpChargePointId\": \"test-point-id\", \"system\": \"Virta\", \"connectorId\": \"1\", \"startTime\": \"2024-12-30T12:00:00\", \"endTime\": \"2024-12-30T13:00:00\"}"
+        'body': "{\"consumerId\": \"test-consumer-id\", \"oocpChargePointId\": \"test-point-id\", \"system\": \"Virta\", \"connectorId\": \"1\", \"startTime\": \"2024-12-30T12:00:00\", \"endTime\": \"2024-12-30T13:00:00\"}"
     }
 
     response = lambda_handler(event, None)

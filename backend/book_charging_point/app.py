@@ -1,11 +1,14 @@
 import json
 import boto3
 import os
+import uuid
 from datetime import datetime
 from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource('dynamodb')
-charging_points_table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME', 'default-charging-points-table'))
+charging_points_table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME'))
+bookings_table = dynamodb.Table(os.environ.get('BOOKINGS_TABLE_NAME'))
+
 api_gateway_client = boto3.client('apigateway')
 
 ssm_client = boto3.client('ssm')
@@ -37,6 +40,7 @@ def lambda_handler(event, context):
         if not all(field in event_body for field in required_fields):
             raise ValueError("Missing required input fields.")
 
+        consumer_id = event_body['consumerId']
         oocp_charge_point_id = event_body['oocpChargePointId']
         system = event_body['system']
         connector_id = event_body['connectorId']
@@ -46,7 +50,9 @@ def lambda_handler(event, context):
         reservation_response = send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, start_time, end_time)
         
         if reservation_response.get('status') == 'success':
-            update_dynamodb_status(oocp_charge_point_id, False)
+            timestamp = datetime.now().isoformat()
+            update_dynamodb_charging_points_table_status(oocp_charge_point_id, False, timestamp)
+            log_booking_to_dynamodb(consumer_id, oocp_charge_point_id, start_time, end_time, timestamp)
             return {
                 'statusCode': 200,
                 'body': json.dumps({'message': 'Slot booked successfully, charging point is now unavailable.'})
@@ -61,19 +67,38 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
 
-def update_dynamodb_status(oocp_charge_point_id, is_available):
+def log_booking_to_dynamodb(
+    consumer_id, 
+    oocp_charge_point_id, 
+    start_time, 
+    end_time, 
+    timestamp
+): 
+    booking_id = str(uuid.uuid4())
+    try: 
+        bookings_table.put_item(Item={
+            'bookingId': booking_id, 
+            'consumerId': consumer_id, 
+            'oocpChargePointId': oocp_charge_point_id, 
+            'startTime#endTime': f'{start_time}#{end_time}', 
+            'timestamp': timestamp
+        })
+    except ClientError as e: 
+        raise Exception(f"Error writing DynamoDB Bookings table: {e.response['Error']['Message']}")
+        
+def update_dynamodb_charging_points_table_status(oocp_charge_point_id, is_available, timestamp):
     try:
         charging_points_table.update_item(
             Key={'oocpChargePointId': oocp_charge_point_id},
             UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp",
             ExpressionAttributeValues={
                 ':is_available': is_available,
-                ':timestamp': datetime.now().isoformat()
+                ':timestamp': timestamp
             },
             ConditionExpression="attribute_exists(oocpChargePointId)"
         )
     except ClientError as e:
-        raise Exception(f"Error updating DynamoDB: {e.response['Error']['Message']}")
+        raise Exception(f"Error updating DynamoDB Charging Points table: {e.response['Error']['Message']}")
 
 def get_api_gateway_url(system):
     if system == 'Virta':

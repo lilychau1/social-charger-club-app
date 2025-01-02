@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import os
 import json
-from book_charging_point.app import lambda_handler, update_dynamodb_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
+from book_charging_point.app import lambda_handler, update_dynamodb_charging_points_table_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
 
 class TestBookChargingPoint(unittest.TestCase):
     @patch('book_charging_point.app.api_gateway_client')
@@ -20,17 +20,12 @@ class TestBookChargingPoint(unittest.TestCase):
         }
 
         event = {
-            'oocpChargePointId': 'test-point-id',
-            'system': 'Virta',
-            'connectorId': '1',
-            'startTime': '2024-12-30T12:00:00',
-            'endTime': '2024-12-30T13:00:00'
+            'httpMethod': 'POST', 
+            'body': '{\"consumerId\": \"test-consumer-id\", \"oocpChargePointId\": \"test-point-id\",\"system\": \"Virta\",\"connectorId\": \"1\",\"startTime\": \"2024-12-30T12:00:00\",\"endTime\": \"2024-12-30T13:00:00\"}'
         }
 
-        # Run handler
         response = lambda_handler(event, None)
 
-        # Assertions
         self.assertEqual(response['statusCode'], 200)
         self.assertIn('Slot booked successfully', response['body'])
         mock_charging_points_table.update_item.assert_called_once()
@@ -42,8 +37,8 @@ class TestBookChargingPoint(unittest.TestCase):
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
 
         mock_charging_points_table.update_item.return_value = 'Updated'
-
-        update_dynamodb_status('test-point-id', False)
+        timestamp = 'mock-timestamp'
+        update_dynamodb_charging_points_table_status('test-point-id', False, timestamp)
 
         mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': 'test-point-id'},

@@ -110,7 +110,16 @@ def get_stripe_account_for_producer(producer_id):
         print(f"Error fetching Stripe account ID for producer {producer_id}: {str(e)}")
         return None
 
-def log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, payment_method, is_successful, message):
+def log_payment_to_dynamodb(
+    consumer_id, 
+    producer_id, 
+    charging_point_id, 
+    oocp_charge_point_id, 
+    amount, 
+    payment_method, 
+    is_successful, 
+    message
+):
     try:
         transaction_id = str(uuid.uuid4())
            
