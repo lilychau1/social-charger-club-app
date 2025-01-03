@@ -11,6 +11,12 @@ secrets_clientr = boto3.client('secretsmanager')
 producers_table = dynamodb.Table(os.environ.get('PRODUCERS_TABLE_NAME'))
 transactions_table = dynamodb.Table(os.environ.get('TRANSACTIONS_TABLE_NAME'))
 
+cors_header = {
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-Amz-Security-Token'
+}
+
 def get_stripe_api_key():
     api_key = os.environ.get('STRIPE_API_KEY')
     if api_key: 
@@ -31,6 +37,14 @@ def get_stripe_api_key():
 stripe.api_key = get_stripe_api_key()
 
 def lambda_handler(event, context):
+
+    # Handle CORS preflight requests (OPTIONS)
+    if event['httpMethod'] == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': cors_header
+        }
+
     try:
         user_payment_method = event.get('payment_method')
         amount = event.get('amount')
@@ -44,6 +58,7 @@ def lambda_handler(event, context):
             log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, user_payment_method, False, error_message)
             return {
                 'statusCode': 400,
+                'headers': cors_header, 
                 'body': json.dumps({'error': error_message})
             }
 
@@ -54,6 +69,7 @@ def lambda_handler(event, context):
             log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, user_payment_method, False, error_message)
             return {
                 'statusCode': 400,
+                'headers': cors_header, 
                 'body': json.dumps({'error': error_message})
             }
 
@@ -78,6 +94,7 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 200,
+            'headers': cors_header, 
             'body': json.dumps({
                 'message': success_message,
                 'payment_intent': payment_intent.id,
@@ -90,6 +107,7 @@ def lambda_handler(event, context):
         log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, user_payment_method, False, error_message)
         return {
             'statusCode': 400,
+            'headers': cors_header, 
             'body': json.dumps({'error': error_message})
         }
     except Exception as e:
@@ -97,6 +115,7 @@ def lambda_handler(event, context):
         log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, user_payment_method, False, error_message)
         return {
             'statusCode': 500,
+            'headers': cors_header, 
             'body': json.dumps({'error': error_message})
         }
 

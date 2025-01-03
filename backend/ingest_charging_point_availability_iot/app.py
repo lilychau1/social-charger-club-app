@@ -4,12 +4,25 @@ import os
 from datetime import datetime
 import uuid
 
-# Initialize resources
 dynamodb = boto3.resource('dynamodb')
 charging_points_table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME'))
 charging_point_events_table = dynamodb.Table(os.environ.get('CHARGING_POINT_EVENTS_TABLE_NAME'))
 
+cors_header = {
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-Amz-Security-Token'
+}
+
 def lambda_handler(event, context):
+
+    # Handle CORS preflight requests (OPTIONS)
+    if event['httpMethod'] == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': cors_header
+        }
+        
     for record in event['Records']:
         # Extract MQTT topic and message
         topic = record['topic']
@@ -19,6 +32,7 @@ def lambda_handler(event, context):
         except Exception as e:
             return {
                 'statusCode': 400,
+                'headers': cors_header, 
                 'body': json.dumps({'error': str(e)})
             }
 
@@ -28,6 +42,7 @@ def lambda_handler(event, context):
             if not status:
                 return {
                     'statusCode': 400,
+                    'headers': cors_header, 
                     'body': json.dumps({'error': 'Invalid status field in message.'})
                 }
             handle_device_status(oocp_charge_point_id, status)
@@ -38,6 +53,7 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
+        'headers': cors_header, 
         'body': json.dumps({'message': 'Messages processed successfully'})
     }
 

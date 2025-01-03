@@ -16,7 +16,7 @@ dynamodb = boto3.resource('dynamodb')
 table_name = os.environ.get('CHARGING_POINTS_TABLE_NAME')
 table = dynamodb.Table(table_name)
 
-options_headers = {
+cors_headers = {
     'Access-Control-Allow-Origin': 'http://localhost:3000',
     'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-Amz-Security-Token'
@@ -34,7 +34,7 @@ def lambda_handler(event, context):
     if event['httpMethod'] == 'OPTIONS':
         return {
             "statusCode": 200,
-            "headers": options_headers, 
+            "headers": cors_headers, 
             "body": json.dumps({})
         }
 
@@ -49,6 +49,7 @@ def lambda_handler(event, context):
         if not lat_long:
             return {
                 'statusCode': 400, 
+                'headers': cors_header, 
                 'body': json.dumps({'error': 'Invalid postcode.'})
             }
         
@@ -77,7 +78,7 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 200, 
-            'headers': options_headers, 
+            'headers': cors_headers, 
             'body': json.dumps(nearby_charging_points)
         }
             
@@ -85,6 +86,6 @@ def lambda_handler(event, context):
         print(f'Error: {str(e)}')
         return {
             'statusCode': 500, 
-            'headers': options_headers, 
+            'headers': cors_headers, 
             'body': json.dumps({'error': str(e)})
         }

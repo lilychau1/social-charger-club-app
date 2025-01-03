@@ -63,18 +63,16 @@ def lambda_handler(event, context):
         }
 
     try:
-        # Parse the body from the event
+
         body = json.loads(event.get('body', '{}'))
         email = body.get('email')
-        # Use email as the default username
+
         password = body.get('password')
         username = body.get('username', email)
         user_type = body.get('userType')
 
-        # Generate IDs
         user_id, consumer_id, producer_id = generate_ids(user_type)
 
-        # Create cognito user
         try: 
             cognito_resp = create_cognito_user(
                 email,
@@ -92,7 +90,6 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': str(e)})
             }
         
-        # Create item for DynamoDB
         item = {
             'userId': user_id,
             'email': email,
@@ -104,10 +101,8 @@ def lambda_handler(event, context):
             'status': 'UNVERIFIED'
         }
 
-        # Store item in DynamoDB
         table.put_item(Item=item)
 
-        # Return success response
         return {
             'statusCode': 200,
             'headers': cors_header,

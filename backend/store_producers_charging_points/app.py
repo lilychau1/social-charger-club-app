@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 
 dynamodb = boto3.client('dynamodb')
 
-options_headers = {
+cors_headers = {
     'Access-Control-Allow-Origin': 'http://localhost:3000', 
     'Access-Control-Allow-Methods': 'OPTIONS, POST',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-Amz-Security-Token'
@@ -16,7 +16,7 @@ def lambda_handler(event, context):
     if event['httpMethod'] == 'OPTIONS':
         return {
             "statusCode": 200,
-            'headers': options_headers,
+            'headers': cors_headers,
             "body": json.dumps({})
         }
 
@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         if body is None:
             return {
                 "statusCode": 400,
-                'headers': options_headers,
+                'headers': cors_headers,
                 "body": json.dumps({"error": "Invalid input. producerId and chargingPoints are required."})
             }
         
@@ -39,7 +39,7 @@ def lambda_handler(event, context):
         if not producer_id or not charging_points:
             return {
                 "statusCode": 400,
-                'headers': options_headers,
+                'headers': cors_headers,
                 "body": json.dumps({"error": "Invalid input. producerId and chargingPoints are required."})
             }
 
@@ -57,7 +57,7 @@ def lambda_handler(event, context):
             if latitude is None or longitude is None:
                 return {
                     "statusCode": 400,
-                    'headers': options_headers,
+                    'headers': cors_headers,
                     "body": json.dumps({"error": "Both latitude and longitude are required."})
                 }
             
@@ -78,7 +78,7 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
-            'headers': options_headers,
+            'headers': cors_headers,
             "body": json.dumps(
                 {
                     "message": "Charging points added successfully", 
@@ -91,13 +91,13 @@ def lambda_handler(event, context):
         print(f"ClientError: {e}")
         return {
             "statusCode": 500,
-            'headers': options_headers,
+            'headers': cors_headers,
             "body": json.dumps({"error": f"Client error: {e.response['Error']['Message']}"})
         }
     except Exception as e:
         print(f"Error: {e}")
         return {
             "statusCode": 500,
-            'headers': options_headers,
+            'headers': cors_headers,
             "body": json.dumps({"error": f"Server error: {str(e)}"})
         }
