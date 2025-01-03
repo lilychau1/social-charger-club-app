@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 import os
 import json
 from book_charging_point.app import lambda_handler, update_dynamodb_charging_points_table_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
@@ -46,7 +46,7 @@ class TestBookChargingPoint(unittest.TestCase):
             UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp",
             ExpressionAttributeValues={
                 ':is_available': False,
-                ':timestamp': unittest.mock.ANY, 
+                ':timestamp': ANY, 
                 ':consumer_id': mock_consumer_id
             },
             ConditionExpression="attribute_exists(oocpChargePointId)"

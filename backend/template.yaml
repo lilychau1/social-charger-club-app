@@ -40,16 +40,28 @@ Resources:
       AttributeDefinitions: 
         - AttributeName: userId
           AttributeType: S
+        - AttributeName: consumerId
+          AttributeType: S
         - AttributeName: email
           AttributeType: S
       KeySchema: 
         - AttributeName: userId
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: EmailIndex
+        - IndexName: userIdEmailIndex
           KeySchema:
-            - AttributeName: email
+            - AttributeName: userId
               KeyType: HASH
+            - AttributeName: email
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: consumerIdEmailIndex
+          KeySchema:
+            - AttributeName: consumerId
+              KeyType: HASH
+            - AttributeName: email
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
@@ -211,6 +223,77 @@ Resources:
             - AttributeName: consumerId
               KeyType: HASH
             - AttributeName: startTime#endTime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  EVChargingMatchRequestsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-EVCharging_MatchRequests"
+      AttributeDefinitions:
+        - AttributeName: requestId
+          AttributeType: S
+        - AttributeName: senderConsumerId
+          AttributeType: S
+        - AttributeName: recipientConsumerId
+          AttributeType: S
+        - AttributeName: startTime#endTime
+          AttributeType: S
+        - AttributeName: matchStatus
+          AttributeType: S
+        - AttributeName: isRead
+          AttributeType: N
+      KeySchema:
+        - AttributeName: requestId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: senderConsumerId-startTime-endTime-Index
+          KeySchema:
+            - AttributeName: senderConsumerId
+              KeyType: HASH
+            - AttributeName: startTime#endTime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: recipientConsumerId-startTime-endTime-Index
+          KeySchema:
+            - AttributeName: recipientConsumerId
+              KeyType: HASH
+            - AttributeName: startTime#endTime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: senderConsumerId-isRead-Index
+          KeySchema:
+            - AttributeName: senderConsumerId
+              KeyType: HASH
+            - AttributeName: isRead
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: recipientConsumerId-isRead-Index
+          KeySchema:
+            - AttributeName: recipientConsumerId
+              KeyType: HASH
+            - AttributeName: isRead
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: senderConsumerId-matchStatus-Index
+          KeySchema:
+            - AttributeName: senderConsumerId
+              KeyType: HASH
+            - AttributeName: matchStatus
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: recipientConsumerId-matchStatus-Index
+          KeySchema:
+            - AttributeName: recipientConsumerId
+              KeyType: HASH
+            - AttributeName: matchStatus
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -378,6 +461,32 @@ Resources:
             Path: /book-charging-point
             Method: post
 
+  RequestMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-RequestMatch"
+      CodeUri: book_charging_point/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          MATCH_REQUESTS_TABLE_NAME: !Ref EVChargingMatchRequestsTable
+          USERS_TABLE_NAME: !Ref EVChargingUsersTable
+          PARAMETER_PREFIX: !Sub "${Environment}-"
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: '*'
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /request-match
+            Method: post
+
   IoTPolicy:
     Type: AWS::IoT::Policy
     Properties:
@@ -518,3 +627,11 @@ Resources:
       Description: "Virta resource ID"
       Type: String
       Value: "test-virta-resource-id"
+
+  SESEmailParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "${Environment}-SES_EMAIL"
+      Description: "SES email"
+      Type: String
+      Value: "<Change to your test email>"

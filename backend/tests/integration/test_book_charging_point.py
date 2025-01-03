@@ -23,7 +23,6 @@ load_env_vars()
 def dynamodb_table_charging_points():
     table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME'))
     
-    # Add test data
     test_data = {
         'oocpChargePointId': 'test-point-id',
         'isAvailable': True,
@@ -34,7 +33,6 @@ def dynamodb_table_charging_points():
 
     yield table
     
-    # Clean up test data
     table.delete_item(Key={'oocpChargePointId': test_data['oocpChargePointId']})
 
 mock_booking_id = 'mock-booking_id'
