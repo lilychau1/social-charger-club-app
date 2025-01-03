@@ -15,14 +15,6 @@ cors_header = {
 }
 
 def lambda_handler(event, context):
-
-    # Handle CORS preflight requests (OPTIONS)
-    if event['httpMethod'] == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': cors_header
-        }
-        
     for record in event['Records']:
         # Extract MQTT topic and message
         topic = record['topic']
@@ -120,19 +112,21 @@ def handle_action(action, oocp_charge_point_id, message_body):
             'eventType': action,
             'message': message_body
         })
-
+        is_available = None
+        
     # Update the ChargingPoints table with the new availability status
-    charging_points_table.update_item(
-        Key={'oocpChargePointId': oocp_charge_point_id},
-        UpdateExpression=(
-            'SET isAvailable = :available, '
-            'statusUpdatedAt = :timestamp'
-        ),
-        ExpressionAttributeValues={
-            ':available': is_available,
-            ':timestamp': timestamp
-        }
-    )
+    if is_available:
+        charging_points_table.update_item(
+            Key={'oocpChargePointId': oocp_charge_point_id},
+            UpdateExpression=(
+                'SET isAvailable = :available, '
+                'statusUpdatedAt = :timestamp'
+            ),
+            ExpressionAttributeValues={
+                ':available': is_available,
+                ':timestamp': timestamp
+            }
+        )
 
     # Log the action event in ChargingPointEvents table
     charging_point_events_table.put_item(Item={
