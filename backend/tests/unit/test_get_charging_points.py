@@ -1,5 +1,3 @@
-# test_get_charging_points.py
-
 import json
 import pytest
 from unittest.mock import patch, MagicMock
@@ -26,7 +24,6 @@ def mock_dynamodb_table():
     }
 
         yield mock_table
-
 
 dynamodb_scan_return_value = {
     'Items': [

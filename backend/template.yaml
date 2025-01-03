@@ -487,6 +487,31 @@ Resources:
             Path: /request-match
             Method: post
 
+  HandleMatchRequestResponseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-HandleMatchRequestResponse"
+      CodeUri: book_charging_point/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          MATCH_REQUESTS_TABLE_NAME: !Ref EVChargingMatchRequestsTable
+          USERS_TABLE_NAME: !Ref EVChargingUsersTable
+          PARAMETER_PREFIX: !Sub "${Environment}-"
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: '*'
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /handle-match-request-response
+            Method: post
   IoTPolicy:
     Type: AWS::IoT::Policy
     Properties:
