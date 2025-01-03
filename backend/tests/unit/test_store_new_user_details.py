@@ -4,7 +4,7 @@ import os
 from botocore.exceptions import ClientError
 from unittest.mock import patch
 
-from store_new_user_details.app import lambda_handler  # Correct import path
+from lambda_functions.store_new_user_details.app import lambda_handler  # Correct import path
 
 @pytest.fixture()
 def apigw_event():
@@ -31,7 +31,7 @@ def mock_env_vars():
     }):
         yield
 
-@patch('store_new_user_details.app.dynamodb')
+@patch('lambda_functions.store_new_user_details.app.dynamodb')
 def test_lambda_handler_success(mock_dynamodb, apigw_event):
     mock_dynamodb.update_item.return_value = {}
 
@@ -41,7 +41,7 @@ def test_lambda_handler_success(mock_dynamodb, apigw_event):
     body = json.loads(response['body'])
     assert body['message'] == "User details updated successfully"
 
-@patch('store_new_user_details.app.dynamodb')
+@patch('lambda_functions.store_new_user_details.app.dynamodb')
 def test_lambda_handler_dynamodb_error(mock_dynamodb, apigw_event):
     mock_dynamodb.update_item.side_effect = ClientError(
         {'Error': {'Code': 'ConditionalCheckFailedException', 'Message': 'The conditional request failed'}},
@@ -55,7 +55,7 @@ def test_lambda_handler_dynamodb_error(mock_dynamodb, apigw_event):
     assert 'error' in body
     assert 'Client error' in body['error']
 
-@patch('store_new_user_details.app.dynamodb')
+@patch('lambda_functions.store_new_user_details.app.dynamodb')
 def test_lambda_handler_general_error(mock_dynamodb, apigw_event):
     mock_dynamodb.update_item.side_effect = Exception("Unexpected error")
 
@@ -73,7 +73,7 @@ def test_lambda_handler_options():
     assert response['statusCode'] == 200
     assert 'Access-Control-Allow-Origin' in response['headers']
 
-@patch('store_new_user_details.app.dynamodb')
+@patch('lambda_functions.store_new_user_details.app.dynamodb')
 def test_lambda_handler_partial_update(mock_dynamodb, apigw_event):
     apigw_event['body'] = json.dumps({
         "userId": "user123",

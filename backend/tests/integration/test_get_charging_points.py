@@ -2,7 +2,7 @@ import json
 import os
 import boto3
 import pytest
-from get_charging_points.app import lambda_handler
+from lambda_functions.get_charging_points.app import lambda_handler
 
 @pytest.fixture(scope='module')
 def dynamodb_table():

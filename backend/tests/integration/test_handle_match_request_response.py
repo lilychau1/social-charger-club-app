@@ -3,7 +3,7 @@ import boto3
 import json
 import pytest
 from unittest.mock import patch
-from handle_match_request_response.app import lambda_handler
+from lambda_functions.handle_match_request_response.app import lambda_handler
 
 dynamodb = boto3.resource('dynamodb')
 

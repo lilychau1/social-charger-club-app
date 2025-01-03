@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import os
 import boto3
 from botocore.exceptions import ClientError
-from book_charging_point.app import lambda_handler, send_oocp_reservation_request
+from lambda_functions.book_charging_point.app import lambda_handler, send_oocp_reservation_request
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -48,7 +48,7 @@ def dynamodb_table_bookings():
 
 @pytest.fixture
 def mock_api_gateway_client():
-    with patch('book_charging_point.app.api_gateway_client') as mock_client:
+    with patch('lambda_functions.book_charging_point.app.api_gateway_client') as mock_client:
         mock_api_response = {
             'status': 200, 
             'body': '{"result": "success"}'
@@ -83,7 +83,7 @@ def test_send_oocp_reservation_request_unsupported_system():
             event_body['endTime']
         )
 
-@patch('book_charging_point.app.uuid')
+@patch('lambda_functions.book_charging_point.app.uuid')
 def test_lambda_handler_success(mock_uuid, mock_api_gateway_client, dynamodb_table_charging_points, dynamodb_table_bookings):
     mock_uuid.uuid4.return_value = mock_booking_id
     event = {

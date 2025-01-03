@@ -3,7 +3,7 @@ import os
 import boto3
 import pytest
 from botocore.exceptions import ClientError
-from store_new_user_details.app import lambda_handler
+from lambda_functions.store_new_user_details.app import lambda_handler
 
 # Initialize DynamoDB client and resource
 dynamodb = boto3.resource('dynamodb')

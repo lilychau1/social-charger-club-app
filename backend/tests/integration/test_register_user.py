@@ -4,7 +4,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
-from register_user.app import lambda_handler
+from lambda_functions.register_user.app import lambda_handler
 
 cognito = boto3.client('cognito-idp')
 dynamodb = boto3.resource('dynamodb')

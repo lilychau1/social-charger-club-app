@@ -2,14 +2,14 @@ import unittest
 from unittest.mock import patch, MagicMock, ANY
 import json
 import os
-from request_match.app import lambda_handler, get_ssm_parameter
+from lambda_functions.request_match.app import lambda_handler, get_ssm_parameter
 
 class TestMatchRequestLambdaFunction(unittest.TestCase):
     
-    @patch('request_match.app.match_requests_table')
-    @patch('request_match.app.users_table')
-    @patch('request_match.app.ses_client')
-    @patch('request_match.app.ssm_client')
+    @patch('lambda_functions.request_match.app.match_requests_table')
+    @patch('lambda_functions.request_match.app.users_table')
+    @patch('lambda_functions.request_match.app.ses_client')
+    @patch('lambda_functions.request_match.app.ssm_client')
     def test_lambda_handler_success(self, mock_ssm_client, mock_ses_client, mock_users_table, mock_match_requests_table):
         mock_email_domain = 'mock-email-domain'
         mock_recipient_email = f'recipient@{mock_email_domain}.com'
@@ -56,10 +56,10 @@ class TestMatchRequestLambdaFunction(unittest.TestCase):
             }
         )
 
-    @patch('request_match.app.match_requests_table')
-    @patch('request_match.app.users_table')
-    @patch('request_match.app.ses_client')
-    @patch('request_match.app.ssm_client')
+    @patch('lambda_functions.request_match.app.match_requests_table')
+    @patch('lambda_functions.request_match.app.users_table')
+    @patch('lambda_functions.request_match.app.ses_client')
+    @patch('lambda_functions.request_match.app.ssm_client')
     def test_lambda_handler_missing_fields(self, mock_ssm_client, mock_ses_client, mock_users_table, mock_match_requests_table):
         event = {
             'httpMethod': 'POST',
@@ -78,7 +78,7 @@ class TestMatchRequestLambdaFunction(unittest.TestCase):
         self.assertIn('error', response_body)
         self.assertEqual(response_body['error'], 'Missing required fields in request body')
 
-    @patch('request_match.app.ssm_client')
+    @patch('lambda_functions.request_match.app.ssm_client')
     def test_get_ssm_parameter(self, mock_ssm_client):
 
         mock_param_key = 'mock-param-key'

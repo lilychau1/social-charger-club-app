@@ -2,12 +2,12 @@ import unittest
 from unittest.mock import patch, MagicMock, ANY
 import os
 import json
-from book_charging_point.app import lambda_handler, update_dynamodb_charging_points_table_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
+from lambda_functions.book_charging_point.app import lambda_handler, update_dynamodb_charging_points_table_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
 
 class TestBookChargingPoint(unittest.TestCase):
-    @patch('book_charging_point.app.api_gateway_client')
-    @patch('book_charging_point.app.charging_points_table')
-    @patch('book_charging_point.app.get_parameter_or_secret')
+    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
+    @patch('lambda_functions.book_charging_point.app.charging_points_table')
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
     def test_lambda_handler_success(self, mock_get_parameter_or_secret, mock_charging_points_table, mock_api_gateway_client):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
@@ -30,8 +30,8 @@ class TestBookChargingPoint(unittest.TestCase):
         self.assertIn('Slot booked successfully', response['body'])
         mock_charging_points_table.update_item.assert_called_once()
 
-    @patch('book_charging_point.app.charging_points_table')
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.charging_points_table')
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
     def test_update_dynamodb_status(self, mock_get_parameter_or_secret, mock_charging_points_table):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
@@ -52,8 +52,8 @@ class TestBookChargingPoint(unittest.TestCase):
             ConditionExpression="attribute_exists(oocpChargePointId)"
         )
 
-    @patch('book_charging_point.app.api_gateway_client')
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
     def test_send_oocp_reservation_request_virta(self, mock_get_parameter_or_secret, mock_api_gateway_client):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
@@ -75,8 +75,8 @@ class TestBookChargingPoint(unittest.TestCase):
         self.assertEqual(response['status'], 'success')
         mock_api_gateway_client.test_invoke_method.assert_called_once()
 
-    @patch('book_charging_point.app.api_gateway_client')
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
     def test_send_oocp_reservation_request_evbox(self, mock_get_parameter_or_secret, mock_api_gateway_client):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
@@ -97,7 +97,7 @@ class TestBookChargingPoint(unittest.TestCase):
         self.assertEqual(response['status'], 'success')
         mock_api_gateway_client.test_invoke_method.assert_called_once()
 
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
     def test_get_auth(self, mock_get_parameter_or_secret):
         # Mock the secret retrieval for testing
         os.environ['VIRTA_API_KEY'] = 'mocked-secret-value'
@@ -113,9 +113,9 @@ class TestBookChargingPoint(unittest.TestCase):
         self.assertEqual(evbox_headers, {'Authorization': 'Bearer mocked-secret-value'})
 
 
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
+    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
     def test_get_parameter_or_secret_env_var_exists(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
         # Where environment variable is set
         os.environ['VIRTA_API_KEY'] = 'env-api-key'
@@ -127,9 +127,9 @@ class TestBookChargingPoint(unittest.TestCase):
         mock_get_ssm_parameter.assert_not_called() 
         mock_get_secret_value.assert_not_called()
         
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
+    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
     def test_get_parameter_or_secret_no_env_var_key(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
 
         # Where environment variable is not set
@@ -141,9 +141,9 @@ class TestBookChargingPoint(unittest.TestCase):
         mock_get_ssm_parameter.assert_not_called()
         mock_get_secret_value.assert_called_once()
         
-    @patch('book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
+    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
+    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
     def test_get_parameter_or_secret_no_env_var_param(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
 
         # Where environment variable is not set

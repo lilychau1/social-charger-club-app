@@ -3,7 +3,7 @@ import os
 import boto3
 import pytest
 from botocore.exceptions import ClientError
-from ingest_charging_point_availability_iot.app import lambda_handler  # Replace with the actual module path
+from lambda_functions.ingest_charging_point_availability_iot.app import lambda_handler  # Replace with the actual module path
 
 dynamodb = boto3.resource('dynamodb')
 

@@ -303,7 +303,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-HelloWorldFunction"
-      CodeUri: hello_world/
+      CodeUri: lambda_functions/hello_world/
       Handler: app.lambda_handler
       Runtime: python3.13
       Architectures:
@@ -320,7 +320,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-RegisterUserFunction"
-      CodeUri: register_user/
+      CodeUri: lambda_functions/register_user/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -343,7 +343,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-StoreNewUserDetailsFunction"
-      CodeUri: store_new_user_details/
+      CodeUri: lambda_functions/store_new_user_details/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -366,7 +366,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-StoreProducersChargingPoints"
-      CodeUri: store_producers_charging_points/
+      CodeUri: lambda_functions/store_producers_charging_points/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -387,7 +387,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-GetChargingPoints"
-      CodeUri: get_charging_points/
+      CodeUri: lambda_functions/get_charging_points/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -408,7 +408,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-IngestChargingPointAvailabilityIoT"
-      CodeUri: ingest_charging_point_availability_iot/
+      CodeUri: lambda_functions/ingest_charging_point_availability_iot/
       Handler: app.lambda_handler
       Runtime: python3.13
       Policies: 
@@ -431,7 +431,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-BookChargingPoint"
-      CodeUri: book_charging_point/
+      CodeUri: lambda_functions/book_charging_point/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -465,7 +465,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-RequestMatch"
-      CodeUri: book_charging_point/
+      CodeUri: lambda_functions/book_charging_point/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
@@ -491,7 +491,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-HandleMatchRequestResponse"
-      CodeUri: book_charging_point/
+      CodeUri: lambda_functions/book_charging_point/
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10

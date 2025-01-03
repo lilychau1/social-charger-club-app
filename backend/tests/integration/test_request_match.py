@@ -3,7 +3,7 @@ import boto3
 import json
 import pytest
 from unittest.mock import patch
-from request_match.app import lambda_handler
+from lambda_functions.request_match.app import lambda_handler
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -52,7 +52,7 @@ def mock_ses_client():
     ses_client = boto3.client('ses')
     yield ses_client
 
-@patch('request_match.app.uuid')
+@patch('lambda_functions.request_match.app.uuid')
 def test_lambda_handler(mock_uuid, dynamodb_table_users, dynamodb_table_match_requests, mock_ses_client):
     mock_uuid.uuid4.return_value = mock_request_id
 
@@ -88,7 +88,7 @@ def test_lambda_handler(mock_uuid, dynamodb_table_users, dynamodb_table_match_re
     assert mock_recipient_email in sent_emails
 
 
-@patch('request_match.app.uuid')
+@patch('lambda_functions.request_match.app.uuid')
 def test_lambda_handler_missing_fields_error(mock_uuid, dynamodb_table_users, dynamodb_table_match_requests, mock_ses_client):
     mock_uuid.uuid4.return_value = mock_request_id_2
 
@@ -112,7 +112,7 @@ def test_lambda_handler_missing_fields_error(mock_uuid, dynamodb_table_users, dy
     assert len(items) == 0
 
 
-@patch('request_match.app.uuid')
+@patch('lambda_functions.request_match.app.uuid')
 def test_lambda_handler_user_not_found_error(mock_uuid, dynamodb_table_users, dynamodb_table_match_requests, mock_ses_client):
     mock_uuid.uuid4.return_value = mock_request_id_3
 

@@ -1,12 +1,12 @@
 import json
 import unittest
 from unittest.mock import patch, MagicMock, ANY
-from ingest_charging_point_availability_iot.app import lambda_handler, handle_device_status, handle_action, extract_oocp_charge_point_id_from_topic
+from lambda_functions.ingest_charging_point_availability_iot.app import lambda_handler, handle_device_status, handle_action, extract_oocp_charge_point_id_from_topic
 
 class TestLambdaFunction(unittest.TestCase):
 
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_points_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_point_events_table')
     def test_handle_device_status_online(self, mock_charging_point_events_table, mock_charging_points_table):
 
         mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
@@ -36,8 +36,8 @@ class TestLambdaFunction(unittest.TestCase):
             }
         )
 
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_points_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_point_events_table')
     def test_handle_device_status_offline(self, mock_charging_point_events_table, mock_charging_points_table):
         mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
         mock_charging_point_events_table.put_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
@@ -66,8 +66,8 @@ class TestLambdaFunction(unittest.TestCase):
             }
         )
 
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_points_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_point_events_table')
     def test_handle_action_start_transaction(self, mock_charging_point_events_table, mock_charging_points_table):
 
         mock_charging_points_table.update_item.return_value = {'ResponseMetadata': {'HTTPStatusCode': 200}}
@@ -102,8 +102,8 @@ class TestLambdaFunction(unittest.TestCase):
             }
         )
 
-    @patch('ingest_charging_point_availability_iot.app.charging_points_table')
-    @patch('ingest_charging_point_availability_iot.app.charging_point_events_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_points_table')
+    @patch('lambda_functions.ingest_charging_point_availability_iot.app.charging_point_events_table')
     def test_lambda_handler_success(self, mock_charging_points_table, mock_charging_point_events_table):
         event = {
             'Records': [

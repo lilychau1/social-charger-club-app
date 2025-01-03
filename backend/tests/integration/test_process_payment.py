@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import pytest
 from botocore.exceptions import ClientError
-from process_payment.app import lambda_handler
+from lambda_functions.process_payment.app import lambda_handler
 
 def load_env_vars():
     with open('backend/env.json', 'r') as env_file:
@@ -44,10 +44,10 @@ def dynamodb_table_transactions():
     # Clean up test data
     table.delete_item(Key={'transactionId': mock_transaction_id})
 
-@patch('process_payment.app.get_stripe_account_for_producer')    
-@patch('process_payment.app.stripe.PaymentIntent.create')
-@patch('process_payment.app.stripe.Transfer.create')
-@patch('process_payment.app.uuid')
+@patch('lambda_functions.process_payment.app.get_stripe_account_for_producer')    
+@patch('lambda_functions.process_payment.app.stripe.PaymentIntent.create')
+@patch('lambda_functions.process_payment.app.stripe.Transfer.create')
+@patch('lambda_functions.process_payment.app.uuid')
 def test_lambda_handler_successful_payment(
     mock_uuid, 
     mock_transfer_create, 
@@ -102,9 +102,9 @@ def test_lambda_handler_successful_payment(
     response = dynamodb.Table(os.environ['TRANSACTIONS_TABLE_NAME']).scan()
     assert any(item['consumerId'] == 'mock-customer-id' for item in response.get('Items', []))
 
-@patch('process_payment.app.get_stripe_account_for_producer')
-@patch('process_payment.app.stripe.PaymentIntent.create')
-@patch('process_payment.app.stripe.Transfer.create')
+@patch('lambda_functions.process_payment.app.get_stripe_account_for_producer')
+@patch('lambda_functions.process_payment.app.stripe.PaymentIntent.create')
+@patch('lambda_functions.process_payment.app.stripe.Transfer.create')
 def test_lambda_handler_missing_parameters(mock_transfer_create, mock_payment_intent_create, mock_get_stripe_function):
     mock_get_stripe_function.return_value = mock_stripe_account_id
 

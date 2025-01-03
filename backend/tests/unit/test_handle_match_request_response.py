@@ -2,14 +2,14 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 from datetime import datetime
-from handle_match_request_response.app import lambda_handler, get_user_email, send_email_notification_to_sender
+from lambda_functions.handle_match_request_response.app import lambda_handler, get_user_email, send_email_notification_to_sender
 
 
 class TestLambdaFunction(unittest.TestCase):
-    @patch('handle_match_request_response.app.match_requests_table')
-    @patch('handle_match_request_response.app.users_table')
-    @patch('handle_match_request_response.app.ses_client')
-    @patch('handle_match_request_response.app.ssm_client')
+    @patch('lambda_functions.handle_match_request_response.app.match_requests_table')
+    @patch('lambda_functions.handle_match_request_response.app.users_table')
+    @patch('lambda_functions.handle_match_request_response.app.ses_client')
+    @patch('lambda_functions.handle_match_request_response.app.ssm_client')
     def test_lambda_handler_success(self, mock_ssm_client, mock_ses_client, mock_users_table, mock_match_requests_table):
         mock_ssm_client.get_parameter.return_value = {
             'Parameter': {'Value': 'mock-ses-email@example.com'}
@@ -38,7 +38,7 @@ class TestLambdaFunction(unittest.TestCase):
         mock_match_requests_table.update_item.assert_called_once()
         mock_ses_client.send_email.assert_called_once()
 
-    @patch('handle_match_request_response.app.match_requests_table')
+    @patch('lambda_functions.handle_match_request_response.app.match_requests_table')
     def test_lambda_handler_missing_parameters(self, mock_match_requests_table):
         event = {
             'httpMethod': 'POST',
@@ -55,8 +55,8 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(body['error'], 'Missing required fields in request body')
         mock_match_requests_table.update_item.assert_not_called()
 
-    @patch('handle_match_request_response.app.users_table')
-    @patch('handle_match_request_response.app.ses_client')
+    @patch('lambda_functions.handle_match_request_response.app.users_table')
+    @patch('lambda_functions.handle_match_request_response.app.ses_client')
     def test_lambda_handler_user_not_found(self, mock_ses_client, mock_users_table):
         mock_users_table.query.return_value = {'Items': []}
 
@@ -77,8 +77,8 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(body['error'], 'Sender user not found')
         mock_ses_client.send_email.assert_not_called()
 
-    @patch('handle_match_request_response.app.users_table')
-    @patch('handle_match_request_response.app.ses_client')
+    @patch('lambda_functions.handle_match_request_response.app.users_table')
+    @patch('lambda_functions.handle_match_request_response.app.ses_client')
     def test_lambda_handler_ses_failure(self, mock_ses_client, mock_users_table):
         mock_users_table.query.return_value = {'Items': [{'email': 'sender@example.com'}]}
         
@@ -100,7 +100,7 @@ class TestLambdaFunction(unittest.TestCase):
         body = json.loads(response['body'])
         self.assertIn('SES failed to send email', body['error'])
 
-    @patch('handle_match_request_response.app.users_table')
+    @patch('lambda_functions.handle_match_request_response.app.users_table')
     def test_get_user_email(self, mock_users_table):
         mock_users_table.query.return_value = {
             'Items': [{'email': 'test@example.com'}]
@@ -112,7 +112,7 @@ class TestLambdaFunction(unittest.TestCase):
         email = get_user_email('nonexistent-id')
         self.assertIsNone(email)
 
-    @patch('handle_match_request_response.app.ses_client')
+    @patch('lambda_functions.handle_match_request_response.app.ses_client')
     def test_send_email_notification_to_sender(self, mock_ses_client):
         send_email_notification_to_sender(
             ses_email='mock-ses@example.com',

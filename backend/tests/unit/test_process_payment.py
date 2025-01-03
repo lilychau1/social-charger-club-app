@@ -1,15 +1,15 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import json
-from process_payment.app import lambda_handler, get_stripe_account_for_producer, log_payment_to_dynamodb
+from lambda_functions.process_payment.app import lambda_handler, get_stripe_account_for_producer, log_payment_to_dynamodb
 
 
 class TestLambdaFunction(unittest.TestCase):
         
-    @patch('process_payment.app.stripe.PaymentIntent.create')
-    @patch('process_payment.app.stripe.Transfer.create')
-    @patch('process_payment.app.transactions_table')
-    @patch('process_payment.app.producers_table')
+    @patch('lambda_functions.process_payment.app.stripe.PaymentIntent.create')
+    @patch('lambda_functions.process_payment.app.stripe.Transfer.create')
+    @patch('lambda_functions.process_payment.app.transactions_table')
+    @patch('lambda_functions.process_payment.app.producers_table')
     def test_lambda_handler_successful_payment(self, mock_producers_table, mock_transactions_table, mock_payment_intent_create, mock_transfer_create):
         mock_producers_table.get_item.return_value = {
             'Item': {
@@ -48,7 +48,7 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(put_item_call_args['producerId'], 'producer123')
         self.assertTrue(put_item_call_args['isSuccessful'])
 
-    @patch('process_payment.app.transactions_table')
+    @patch('lambda_functions.process_payment.app.transactions_table')
     def test_lambda_handler_missing_parameters(self, mock_transactions_table):
         event = {
             'payment_method': 'pm_card_visa',
@@ -67,8 +67,8 @@ class TestLambdaFunction(unittest.TestCase):
 
         mock_transactions_table.put_item.assert_called_once()
 
-    @patch('process_payment.app.transactions_table')
-    @patch('process_payment.app.producers_table')
+    @patch('lambda_functions.process_payment.app.transactions_table')
+    @patch('lambda_functions.process_payment.app.producers_table')
     def test_lambda_handler_invalid_producer(self, mock_producers_table, mock_transactions_table):
         mock_producers_table.get_item.return_value = {}
         mock_transactions_table.put_item.return_value = 'Updated'
@@ -92,7 +92,7 @@ class TestLambdaFunction(unittest.TestCase):
 
         mock_transactions_table.put_item.assert_called_once()
 
-    @patch('process_payment.app.producers_table')
+    @patch('lambda_functions.process_payment.app.producers_table')
     def test_get_stripe_account_for_producer(self, mock_producers_table):
         mock_producers_table.get_item.return_value = {
             'Item': {
@@ -111,7 +111,7 @@ class TestLambdaFunction(unittest.TestCase):
         stripe_account_id = get_stripe_account_for_producer(invalid_producer_id)
         self.assertIsNone(stripe_account_id)
 
-    @patch('process_payment.app.transactions_table')
+    @patch('lambda_functions.process_payment.app.transactions_table')
     def test_log_payment_to_dynamodb(self, mock_transactions_table):
         mock_transactions_table.put_item.return_value = 'Updated'
         

@@ -3,7 +3,7 @@ import os
 import boto3
 import pytest
 from botocore.exceptions import ClientError
-from ingest_charging_point_availability_iot.app import lambda_handler  # Replace with the actual module path
+from lambda_functions.store_producers_charging_points.app import lambda_handler
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -11,115 +11,118 @@ def load_env_vars():
     with open('backend/env.json', 'r') as env_file:
         env_vars = json.load(env_file)
         os.environ['CHARGING_POINTS_TABLE_NAME'] = env_vars['StoreProducersChargingPointsFunction']['CHARGING_POINTS_TABLE_NAME']
-        os.environ['CHARGING_POINT_EVENTS_TABLE_NAME'] = env_vars['StoreProducersChargingPointsFunction']['CHARGING_POINT_EVENTS_TABLE_NAME']
+
 
 load_env_vars()
 
+oocp_charge_point_id = 'mock-oocp-charge-point-id'
+oocp_charge_point_ids = [oocp_charge_point_id]
+
 @pytest.fixture(scope='module')
-def test_mqtt_message():
+def test_charging_point():
     return {
-        'Records': [
+        'producerId': 'testProducer',
+        'chargingPoints': [
             {
-                'topic': 'charging_points/C123456/status',
-                'message': json.dumps({'status': 'online'})
-            },
-            {
-                'topic': 'charging_points/C123456/action',
-                'message': json.dumps({'action': 'StartTransaction'})
+                'stationName': 'Station A',
+                'address': '123 Main St',
+                'latitude': '40.7128',
+                'longitude': '-74.0060',
+                'oocpChargePointId': oocp_charge_point_id, 
+                'chargingSpeed': ['Level 2', 'Level 3'],
+                'connectorTypes': ['SAE J1772', 'CCS'],
+                'maxPowerOutputAC': '22',
+                'maxPowerOutputDC': '150',
+                'numChargingPoints': '4',
+                'paymentMethods': ['RFID Card', 'Mobile App'],
+                'operatingHours': '24/7',
+                'parkingType': 'Street',
+                'networkProvider': 'ChargePoint',
+                'userInterface': 'Yes',
+                'cableManagement': 'Yes',
+                'weatherProtection': 'No',
+                'primaryElectricitySource': ['Grid', 'Solar'],
+                'renewablePercentage': 30
             }
         ]
     }
 
 @pytest.fixture(scope='module')
-def clean_up_charging_points():
-    # Cleanup function to remove test data from DynamoDB after tests run
+def dynamodb_table_charging_points():
     table_name = os.environ['CHARGING_POINTS_TABLE_NAME']
     table = dynamodb.Table(table_name)
+    yield table
 
-    def clean_up(charging_point_ids):
-        for charging_point_id in charging_point_ids:
-            try:
-                table.delete_item(
-                    Key={'oocpChargePointId': charging_point_id}
-                )
-                print(f"Deleted charging point with ID: {charging_point_id}")
-            except ClientError as e:
-                print(f"Failed to delete charging point {charging_point_id}: {e.response['Error']['Message']}")
-
-    yield clean_up
+    for id in oocp_charge_point_ids:
+        try:
+            table.delete_item(
+                Key={'oocpChargePointId': id}
+            )
+            print(f"Deleted charging point with ID: {id}")
+        except ClientError as e:
+            print(f"Failed to delete charging point {id}: {e.response['Error']['Message']}")
 
 # Integration tests
-def test_lambda_handler_mqtt_integration(test_mqtt_message, clean_up_charging_points):
-    response = lambda_handler(test_mqtt_message, None)
+def test_lambda_handler_integration(test_charging_point, dynamodb_table_charging_points):
+    event = {
+        'httpMethod': 'POST',
+        'body': json.dumps(test_charging_point)
+    }
+
+    response = lambda_handler(event, None)
 
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
-    assert body['message'] == "Messages processed successfully"
-
+    assert body['message'] == "Charging points added successfully"
+    
     table = dynamodb.Table(os.environ['CHARGING_POINTS_TABLE_NAME'])
-    for record in test_mqtt_message['Records']:
-        oocp_charge_point_id = record['topic'].split('/')[1]
+    
+    for id in oocp_charge_point_ids:
         response = table.get_item(
-            Key={'oocpChargePointId': oocp_charge_point_id}
+            Key={'oocpChargePointId': id}
         )
         assert response.get('Item') is not None
 
-    clean_up_charging_points([record['topic'].split('/')[1] for record in test_mqtt_message['Records']])
-
 def test_lambda_handler_missing_fields():
     missing_fields_event = {
-        'Records': [
-            {
-                'topic': 'charging_points/C123456/status',
-                'message': json.dumps({'status': None})
-            }
-        ]
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            "producerId": "testProducer",
+            "chargingPoints": [
+                {
+                    "stationName": "Station B",
+                    # Missing latitude and longitude fields
+                }
+            ]
+        })
     }
 
     response = lambda_handler(missing_fields_event, None)
     
     assert response['statusCode'] == 400
     body = json.loads(response['body'])
-    assert body['error'] == "Invalid status field in message."
+    assert body['error'] == "Both latitude and longitude are required."
 
-def test_lambda_handler_invalid_topic():
+def test_lambda_handler_invalid_request():
     invalid_event = {
-        'Records': [
-            {
-                'topic': 'invalid_topic_format',
-                'message': json.dumps({'status': 'online'})
-            }
-        ]
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            "producerId": "testProducer",
+            "chargingPoints": [
+                {
+                    "stationName": "Station C",
+                    # Missing required fields (e.g., latitude, longitude)
+                    # You can add more invalid scenarios here.
+                }
+            ]
+        })
     }
 
     response = lambda_handler(invalid_event, None)
     
     assert response['statusCode'] == 400
     body = json.loads(response['body'])
-    assert "Invalid topic format" in body['error']
-
-def test_lambda_handler_unknown_action():
-    unknown_action_event = {
-        'Records': [
-            {
-                'topic': 'charging_points/C123456/action',
-                'message': json.dumps({'action': 'UnknownAction'})
-            }
-        ]
-    }
-
-    response = lambda_handler(unknown_action_event, None)
-    
-    assert response['statusCode'] == 200
-    body = json.loads(response['body'])
-    assert body['message'] == "Messages processed successfully"
-
-    events_table = dynamodb.Table(os.environ['CHARGING_POINT_EVENTS_TABLE_NAME'])
-    oocp_charge_point_id = 'C123456'
-    response = events_table.scan(
-        FilterExpression=boto3.dynamodb.conditions.Attr('oocpChargePointId').eq(oocp_charge_point_id)
-    )
-    assert any(event.get('eventType') == 'UnknownAction' for event in response.get('Items', []))
+    assert "error" in body
 
 if __name__ == '__main__':
     pytest.main([__file__])

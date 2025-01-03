@@ -3,7 +3,7 @@ import os
 import pytest
 from botocore.exceptions import ClientError
 from unittest.mock import patch, MagicMock
-from store_producers_charging_points.app import lambda_handler
+from lambda_functions.store_producers_charging_points.app import lambda_handler
 
 # Fixture to create a mock API Gateway event
 @pytest.fixture()
@@ -37,7 +37,7 @@ def apigw_event():
         })
     }
 
-@patch('store_producers_charging_points.app.dynamodb')
+@patch('lambda_functions.store_producers_charging_points.app.dynamodb')
 def test_lambda_handler_success(mock_dynamodb, apigw_event):
     # Mock the put_item method to simulate successful insertion
     mock_dynamodb.put_item.return_value = {}
@@ -49,7 +49,7 @@ def test_lambda_handler_success(mock_dynamodb, apigw_event):
     assert body['message'] == "Charging points added successfully"
     mock_dynamodb.put_item.assert_called()  # Ensure put_item was called
 
-@patch('store_producers_charging_points.app.dynamodb')
+@patch('lambda_functions.store_producers_charging_points.app.dynamodb')
 def test_lambda_handler_missing_latitude(mock_dynamodb, apigw_event):
     # Modify the event to remove latitude
     event = {
@@ -73,7 +73,7 @@ def test_lambda_handler_missing_latitude(mock_dynamodb, apigw_event):
     body = json.loads(response['body'])
     assert body['error'] == "Both latitude and longitude are required."
 
-@patch('store_producers_charging_points.app.dynamodb')
+@patch('lambda_functions.store_producers_charging_points.app.dynamodb')
 def test_lambda_handler_invalid_json(mock_dynamodb):
     event = {
         'httpMethod': 'POST',
@@ -86,7 +86,7 @@ def test_lambda_handler_invalid_json(mock_dynamodb):
     body = json.loads(response['body'])
     assert body['error'] == "Invalid input. producerId and chargingPoints are required."
 
-@patch('store_producers_charging_points.app.dynamodb')
+@patch('lambda_functions.store_producers_charging_points.app.dynamodb')
 def test_lambda_handler_no_producer_id(mock_dynamodb, apigw_event):
     # Modify the event to remove producerId
     event = {
@@ -110,7 +110,7 @@ def test_lambda_handler_no_producer_id(mock_dynamodb, apigw_event):
     body = json.loads(response['body'])
     assert body['error'] == "Invalid input. producerId and chargingPoints are required."
 
-@patch('store_producers_charging_points.app.dynamodb')
+@patch('lambda_functions.store_producers_charging_points.app.dynamodb')
 def test_lambda_handler_dynamodb_error(mock_dynamodb, apigw_event):
     mock_dynamodb.put_item.side_effect = ClientError(
         {"Error": {"Code": "ResourceNotFoundException", 
