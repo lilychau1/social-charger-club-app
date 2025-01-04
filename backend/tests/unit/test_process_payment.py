@@ -10,7 +10,8 @@ class TestLambdaFunction(unittest.TestCase):
     @patch('lambda_functions.process_payment.app.stripe.Transfer.create')
     @patch('lambda_functions.process_payment.app.transactions_table')
     @patch('lambda_functions.process_payment.app.producers_table')
-    def test_lambda_handler_successful_payment(self, mock_producers_table, mock_transactions_table, mock_payment_intent_create, mock_transfer_create):
+    @patch('lambda_functions.process_payment.app.customer_payment_info_table')
+    def test_lambda_handler_successful_payment(self, mock_customer_payment_info_table, mock_producers_table, mock_transactions_table, mock_payment_intent_create, mock_transfer_create):
         mock_producers_table.get_item.return_value = {
             'Item': {
                 'stripeAccountId': 'mock-stripe-account-id',
@@ -23,11 +24,18 @@ class TestLambdaFunction(unittest.TestCase):
         mock_payment_intent_create.return_value = MagicMock(id="pi_12345")
         mock_transfer_create.return_value = MagicMock(id="tr_12345")
 
+        mock_customer_payment_info_table.query.return_value = {
+            'Items': [{
+                'consumerId': 'consumer123',
+                'paymentMethodId': 'pm_card_visa_old', 
+                'other-field': 'some-data', 
+            }]
+        }
         event = {
             'httpMethod': 'POST', 
             'body':json.dumps(
                 {
-                    'payment_method': 'pm_card_visa',
+                    'paymentMethodId': 'pm_card_visa',
                     'amount': 1000,
                     'consumerId': 'consumer123',
                     'producerId': 'producer123',
@@ -58,7 +66,7 @@ class TestLambdaFunction(unittest.TestCase):
         event = {
             'httpMethod': 'POST', 
             'body': json.dumps({
-                    'payment_method': 'pm_card_visa',
+                    'paymentMethodId': 'pm_card_visa',
                     'amount': 1000,
                     'consumerId': 'consumer123',
                     # Missing 'producerId' and other required fields
@@ -84,7 +92,7 @@ class TestLambdaFunction(unittest.TestCase):
         event = {
             'httpMethod': 'POST', 
             'body': json.dumps({
-                'payment_method': 'pm_card_visa',
+                'paymentMethodId': 'pm_card_visa',
                 'amount': 1000,
                 'consumerId': 'consumer123',
                 'producerId': 'invalidProducer',
@@ -95,7 +103,7 @@ class TestLambdaFunction(unittest.TestCase):
 
         context = {}
         response = lambda_handler(event, context)
-
+        
         self.assertEqual(response['statusCode'], 400)
         body = json.loads(response['body'])
         self.assertIn('error', body)
@@ -132,7 +140,7 @@ class TestLambdaFunction(unittest.TestCase):
             charging_point_id='cp123',
             oocp_charge_point_id='oocp123',
             amount=1000,
-            payment_method='pm_card_visa',
+            payment_method_id='pm_card_visa',
             is_successful=True,
             message='Test payment success'
         )

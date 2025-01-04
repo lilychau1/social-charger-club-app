@@ -299,6 +299,27 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
+  EVChargingConsumerPaymentInformationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-EVCharging_PaymentInformation"
+      AttributeDefinitions:
+        - AttributeName: paymentInfoId
+          AttributeType: S
+        - AttributeName: consumerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: paymentInfoId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: consumerIdIndex
+          KeySchema:
+            - AttributeName: consumerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -459,6 +480,39 @@ Resources:
           Properties:
             RestApiId: !Ref ApiGateway
             Path: /book-charging-point
+            Method: post
+
+  ProcessPaymentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ProcessPayment"
+      CodeUri: lambda_functions/process_payment/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          PRODUCERS_TABLE_NAME: !Ref EVChargingProducersTable
+          TRANSACTIONS_TABLE_NAME: !Ref EVChargingTransactionsTable
+          PAYMENT_INFO_TABLE_NAME: !Ref EVChargingConsumerPaymentInformationTable
+          SECRET_NAME: !Ref EVChargingSecrets 
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: '*'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'secretsmanager:GetSecretValue'
+              Resource: !Ref EVChargingSecrets
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /process-payment
             Method: post
 
   RequestMatchFunction:
