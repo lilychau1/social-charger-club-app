@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import json
-from datetime import datetime
 from lambda_functions.handle_match_request_response.app import lambda_handler, get_user_email, send_email_notification_to_sender
 
 
@@ -56,8 +55,9 @@ class TestLambdaFunction(unittest.TestCase):
         mock_match_requests_table.update_item.assert_not_called()
 
     @patch('lambda_functions.handle_match_request_response.app.users_table')
+    @patch('lambda_functions.handle_match_request_response.app.match_requests_table')
     @patch('lambda_functions.handle_match_request_response.app.ses_client')
-    def test_lambda_handler_user_not_found(self, mock_ses_client, mock_users_table):
+    def test_lambda_handler_user_not_found(self, mock_ses_client, mock_match_requests_table, mock_users_table):
         mock_users_table.query.return_value = {'Items': []}
 
         event = {
@@ -79,7 +79,8 @@ class TestLambdaFunction(unittest.TestCase):
 
     @patch('lambda_functions.handle_match_request_response.app.users_table')
     @patch('lambda_functions.handle_match_request_response.app.ses_client')
-    def test_lambda_handler_ses_failure(self, mock_ses_client, mock_users_table):
+    @patch('lambda_functions.handle_match_request_response.app.match_requests_table')
+    def test_lambda_handler_ses_failure(self, match_requests_table, mock_ses_client, mock_users_table):
         mock_users_table.query.return_value = {'Items': [{'email': 'sender@example.com'}]}
         
         mock_ses_client.send_email.side_effect = Exception("SES failed to send email")

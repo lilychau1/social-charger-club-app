@@ -68,12 +68,15 @@ def test_lambda_handler_successful_payment(
     
     # Define event for the Lambda function
     event = {
-        'payment_method': 'pm_12345',
-        'amount': 5000,  # $50.00 in cents
-        'consumerId': 'mock-customer-id',
-        'producerId': mock_producer_id,
-        'chargingPointId': 'test-charging-point',
-        'oocpChargePointId': 'test-oocp-id'
+        'httpMethod': 'POST', 
+        'body': json.dumps({
+            'payment_method': 'pm_12345',
+            'amount': 5000,  # $50.00 in cents
+            'consumerId': 'mock-customer-id',
+            'producerId': mock_producer_id,
+            'chargingPointId': 'test-charging-point',
+            'oocpChargePointId': 'test-oocp-id'
+        })
     }
 
     response = lambda_handler(event, None)
@@ -109,10 +112,13 @@ def test_lambda_handler_missing_parameters(mock_transfer_create, mock_payment_in
     mock_get_stripe_function.return_value = mock_stripe_account_id
 
     event = {
-        'amount': 5000,
-        'consumerId': 'test-consumer',
-        # Missing 'payment_method', 'producerId', 'chargingPointId', 'oocpChargePointId'
-    }
+        'httpMethod': 'POST', 
+        'body': json.dumps({
+            'amount': 5000,
+            'consumerId': 'test-consumer',
+            # Missing 'payment_method', 'producerId', 'chargingPointId', 'oocpChargePointId'
+        })
+   }
 
     response = lambda_handler(event, None)
 

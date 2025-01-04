@@ -4,6 +4,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
+from unittest.mock import patch
 from lambda_functions.register_user.app import lambda_handler
 
 cognito = boto3.client('cognito-idp')
@@ -57,11 +58,14 @@ def clean_up_dynamodb_user(user_id):
     except ClientError as e:
         print(f"Error cleaning up DynamoDB user: {str(e)}")
 
-# Integration tests
-def test_lambda_handler_integration(test_user):
+@patch('lambda_functions.register_user.app.uuid')
+def test_lambda_handler_integration(mock_uuid, test_user):
     # Clean up any existing test user in Cognito user pool
     clean_up_cognito_user(test_user['email'])
-
+    
+    mock_user_id = 'mock-user-id'
+    mock_uuid.uuid4.return_value = mock_user_id
+    
     event = {
         'httpMethod': 'POST',
         'body': json.dumps(test_user)
@@ -90,10 +94,12 @@ def test_lambda_handler_integration(test_user):
     # Verify user in DynamoDB
     table = dynamodb.Table(os.environ['USERS_TABLE_NAME'])
     try:
-        # Email is used as GSI with index name of 'EmailIndex'
         response = table.query(
-            IndexName='EmailIndex',
-            KeyConditionExpression=Key('email').eq(test_user['email'])
+            IndexName='userIdEmailIndex',
+            KeyConditionExpression= (
+                Key('userId').eq(user_id) & 
+                Key('email').eq(test_user['email'])
+            )
         )
 
         # Check if the inserted item was found in the response
@@ -102,7 +108,7 @@ def test_lambda_handler_integration(test_user):
         assert db_user['userType'] == test_user['userType']
     except ClientError as e:
         pytest.fail(f"User not found in DynamoDB: {str(e)}")
-
+    
     # Clean up cognito and dynamodb by deleting the user/record created for the test
     clean_up_cognito_user(test_user['email'])
     clean_up_dynamodb_user(user_id)

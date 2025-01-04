@@ -13,12 +13,12 @@ def load_env_vars():
         os.environ['MATCH_REQUESTS_TABLE_NAME'] = env_vars['HandleMatchRequestResponseFunction']['MATCH_REQUESTS_TABLE_NAME']
         os.environ['USERS_TABLE_NAME'] = env_vars['HandleMatchRequestResponseFunction']['USERS_TABLE_NAME']
         os.environ['PARAMETER_PREFIX'] = env_vars['HandleMatchRequestResponseFunction']['PARAMETER_PREFIX']
-        os.environ['TEST_SENDER_EMAIL'] = env_vars['HandleMatchRequestResponseFunction']['TEST_SENDER_EMAIL']
-        os.environ['TEST_SES_EMAIL'] = env_vars['HandleMatchRequestResponseFunction']['TEST_SES_EMAIL']
+        os.environ['SENDER_EMAIL'] = env_vars['HandleMatchRequestResponseFunction']['SENDER_EMAIL']
+        os.environ['SES_EMAIL'] = env_vars['HandleMatchRequestResponseFunction']['SES_EMAIL']
 
 load_env_vars()
 
-mock_sender_email = os.environ.get('TEST_SENDER_EMAIL')
+mock_sender_email = os.environ.get('SENDER_EMAIL')
 mock_sender_consumer_id = 'mock-sender-consumer-id'
 mock_recipient_consumer_id = 'mock-recipient-consumer-id'
 mock_request_id = 'mock-request-id'

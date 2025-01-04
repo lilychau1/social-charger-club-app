@@ -13,38 +13,21 @@ def mock_dynamodb_table():
                 'stationName': 'Station A', 
                 'primaryElectricitySource': 'Solar', 
                 'location': '51.5074,-0.1278', 
+                'currentChargingConsumerId': 'mock-consumer-id-1', 
+                'isAvailable': True, 
             },
             {
                 'chargingPointId': 'cp2', 
                 'stationName': 'Station B', 
                 'primaryElectricitySource': 'Grid', 
                 'location': '55.9533,-3.1883', 
+                'currentChargingConsumerId': 'mock-consumer-id-2', 
+                'isAvailable': False, 
             }
         ]
     }
 
         yield mock_table
-
-dynamodb_scan_return_value = {
-    'Items': [
-        {
-            'chargingPointId': 'cp1',
-            'stationName': 'Station A', 
-            'primaryElectricitySource': 'Solar', 
-            'location': '51.5074,-0.1278', 
-        },
-        {
-            'chargingPointId': 'cp2', 
-            'stationName': 'Station B', 
-            'primaryElectricitySource': 'Grid', 
-            'location': '55.9533,-3.1883', 
-        }
-    ]
-}
-
-# mock_geocoder_latitude = 51.5074
-# mock_geocoder_longitude = -0.1278
-# mock_geocoder_geocode_return_value 
 
 @pytest.fixture
 def mock_geocoder():
@@ -59,7 +42,6 @@ def test_get_lat_long_from_postcode(mock_geocoder):
     result = get_lat_long_from_postcode('SW1A 1AA')
     assert result == (51.5074, -0.1278)
 
-# @patch('lambda_functions.get_charging_points.app.table')
 def test_lambda_handler_success(mock_dynamodb_table, mock_geocoder):
     event = {
         'httpMethod': 'POST',
@@ -69,7 +51,7 @@ def test_lambda_handler_success(mock_dynamodb_table, mock_geocoder):
         })
     }
     response = lambda_handler(event, None)
-    
+
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
 

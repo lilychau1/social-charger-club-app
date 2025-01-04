@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         if not lat_long:
             return {
                 'statusCode': 400, 
-                'headers': cors_header, 
+                'headers': cors_headers, 
                 'body': json.dumps({'error': 'Invalid postcode.'})
             }
         

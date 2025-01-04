@@ -51,6 +51,7 @@ def lambda_handler(event, context):
         
         if reservation_response.get('status') == 'success':
             timestamp = datetime.now().isoformat()
+
             update_dynamodb_charging_points_table_status(oocp_charge_point_id, False, timestamp, consumer_id)
             log_booking_to_dynamodb(consumer_id, oocp_charge_point_id, start_time, end_time, timestamp)
             return {

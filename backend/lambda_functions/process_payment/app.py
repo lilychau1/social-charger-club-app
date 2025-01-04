@@ -37,7 +37,6 @@ def get_stripe_api_key():
 stripe.api_key = get_stripe_api_key()
 
 def lambda_handler(event, context):
-
     # Handle CORS preflight requests (OPTIONS)
     if event['httpMethod'] == 'OPTIONS':
         return {
@@ -46,12 +45,14 @@ def lambda_handler(event, context):
         }
 
     try:
-        user_payment_method = event.get('payment_method')
-        amount = event.get('amount')
-        consumer_id = event.get('consumerId')
-        producer_id = event.get('producerId')
-        charging_point_id = event.get('chargingPointId')
-        oocp_charge_point_id = event.get('oocpChargePointId')
+        event_body = json.loads(event.get('body'))
+
+        user_payment_method = event_body.get('payment_method')
+        amount = event_body.get('amount')
+        consumer_id = event_body.get('consumerId')
+        producer_id = event_body.get('producerId')
+        charging_point_id = event_body.get('chargingPointId')
+        oocp_charge_point_id = event_body.get('oocpChargePointId')
 
         if not all([user_payment_method, amount, consumer_id, producer_id, charging_point_id, oocp_charge_point_id]):
             error_message = 'Missing required parameters'

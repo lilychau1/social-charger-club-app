@@ -16,21 +16,27 @@ def dynamodb_table():
             'chargingPointId': 'test-cp1',
             'stationName': 'Test Station A',
             'primaryElectricitySource': 'Solar',
-            'location': '51.5074,-0.1278'  # London
+            'location': '51.5074,-0.1278',   # London
+            'currentChargingConsumerId': 'mock-consumer-id-1', 
+            'isAvailable': True, 
         },
         {
             'oocpChargePointId': 'test-cp2',
             'chargingPointId': 'test-cp2',
             'stationName': 'Test Station B',
             'primaryElectricitySource': 'Grid',
-            'location': '55.9533,-3.1883'  # Edinburgh
+            'location': '55.9533,-3.1883',   # Edinburgh
+            'currentChargingConsumerId': 'mock-consumer-id-2', 
+            'isAvailable': True, 
         },
         {
             'oocpChargePointId': 'test-cp3',
             'chargingPointId': 'test-cp3',
             'stationName': 'Test Station C',
             'primaryElectricitySource': 'Wind',
-            'location': '51.5014,-0.1419'  # London (close to test-cp1)
+            'location': '51.5014,-0.1419',   # London (close to test-cp1)
+            'currentChargingConsumerId': 'mock-consumer-id-3', 
+            'isAvailable': True, 
         }
     ]
     
@@ -53,7 +59,7 @@ def test_integration_lambda_handler_success(dynamodb_table):
     }
     
     response = lambda_handler(event, None)
-    
+
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert len(body) > 0

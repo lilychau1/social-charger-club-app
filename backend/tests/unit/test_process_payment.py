@@ -24,12 +24,17 @@ class TestLambdaFunction(unittest.TestCase):
         mock_transfer_create.return_value = MagicMock(id="tr_12345")
 
         event = {
-            'payment_method': 'pm_card_visa',
-            'amount': 1000,
-            'consumerId': 'consumer123',
-            'producerId': 'producer123',
-            'chargingPointId': 'cp123',
-            'oocpChargePointId': 'oocp123'
+            'httpMethod': 'POST', 
+            'body':json.dumps(
+                {
+                    'payment_method': 'pm_card_visa',
+                    'amount': 1000,
+                    'consumerId': 'consumer123',
+                    'producerId': 'producer123',
+                    'chargingPointId': 'cp123',
+                    'oocpChargePointId': 'oocp123'
+                }
+            )
         }
 
         context = {}
@@ -51,10 +56,13 @@ class TestLambdaFunction(unittest.TestCase):
     @patch('lambda_functions.process_payment.app.transactions_table')
     def test_lambda_handler_missing_parameters(self, mock_transactions_table):
         event = {
-            'payment_method': 'pm_card_visa',
-            'amount': 1000,
-            'consumerId': 'consumer123',
-            # Missing 'producerId' and other required fields
+            'httpMethod': 'POST', 
+            'body': json.dumps({
+                    'payment_method': 'pm_card_visa',
+                    'amount': 1000,
+                    'consumerId': 'consumer123',
+                    # Missing 'producerId' and other required fields
+            })   
         }
 
         context = {}
@@ -74,12 +82,15 @@ class TestLambdaFunction(unittest.TestCase):
         mock_transactions_table.put_item.return_value = 'Updated'
         
         event = {
-            'payment_method': 'pm_card_visa',
-            'amount': 1000,
-            'consumerId': 'consumer123',
-            'producerId': 'invalidProducer',
-            'chargingPointId': 'cp123',
-            'oocpChargePointId': 'oocp123'
+            'httpMethod': 'POST', 
+            'body': json.dumps({
+                'payment_method': 'pm_card_visa',
+                'amount': 1000,
+                'consumerId': 'consumer123',
+                'producerId': 'invalidProducer',
+                'chargingPointId': 'cp123',
+                'oocpChargePointId': 'oocp123'
+            })
         }
 
         context = {}

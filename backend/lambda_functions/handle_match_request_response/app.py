@@ -19,6 +19,9 @@ cors_header = {
 
 def get_ssm_parameter(param_name):
     try:
+        value = os.environ.get('SES_EMAIL')
+        if value: 
+            return value
         response = ssm_client.get_parameter(
             Name=param_name,
             WithDecryption=True

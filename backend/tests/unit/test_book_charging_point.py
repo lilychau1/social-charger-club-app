@@ -7,8 +7,9 @@ from lambda_functions.book_charging_point.app import lambda_handler, update_dyna
 class TestBookChargingPoint(unittest.TestCase):
     @patch('lambda_functions.book_charging_point.app.api_gateway_client')
     @patch('lambda_functions.book_charging_point.app.charging_points_table')
+    @patch('lambda_functions.book_charging_point.app.bookings_table')
     @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
-    def test_lambda_handler_success(self, mock_get_parameter_or_secret, mock_charging_points_table, mock_api_gateway_client):
+    def test_lambda_handler_success(self, mock_get_parameter_or_secret, mock_bookings_table, mock_charging_points_table, mock_api_gateway_client):
         # Mock the secret and parameter retrieval
         mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
 
@@ -19,6 +20,7 @@ class TestBookChargingPoint(unittest.TestCase):
             'body': json.dumps({'result': 'success'})
         }
 
+        mock_bookings_table.put_item.return_value = 'Updated'
         event = {
             'httpMethod': 'POST', 
             'body': '{\"consumerId\": \"test-consumer-id\", \"oocpChargePointId\": \"test-point-id\",\"system\": \"Virta\",\"connectorId\": \"1\",\"startTime\": \"2024-12-30T12:00:00\",\"endTime\": \"2024-12-30T13:00:00\"}'
@@ -43,7 +45,7 @@ class TestBookChargingPoint(unittest.TestCase):
 
         mock_charging_points_table.update_item.assert_called_once_with(
             Key={'oocpChargePointId': 'test-point-id'},
-            UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp",
+            UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp, currentBookedConsumerId = :consumer_id",
             ExpressionAttributeValues={
                 ':is_available': False,
                 ':timestamp': ANY, 

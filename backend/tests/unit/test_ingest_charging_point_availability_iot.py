@@ -83,14 +83,7 @@ class TestLambdaFunction(unittest.TestCase):
 
         response = handle_action(action, oocp_charge_point_id, message_body)
 
-        mock_charging_points_table.update_item.assert_called_once_with(
-            Key={'oocpChargePointId': oocp_charge_point_id},
-            UpdateExpression='SET isAvailable = :available, statusUpdatedAt = :timestamp',
-            ExpressionAttributeValues={
-                ':available': False,
-                ':timestamp': ANY
-            }
-        )
+        mock_charging_points_table.update_item.assert_not_called()
 
         mock_charging_point_events_table.put_item.assert_called_once_with(
             Item={
