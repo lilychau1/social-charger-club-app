@@ -1,3 +1,4 @@
 .vscode/*
 pytest.ini
 env.json
+.env

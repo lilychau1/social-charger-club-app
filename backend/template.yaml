@@ -28,10 +28,11 @@ Globals:
 
 Resources:
   ApiGateway:
-    Type: AWS::ApiGateway::RestApi
+    Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "${Environment}-EVChargingApi"
       Description: "API Gateway for EV Charging"
+      StageName: Prod
+
 
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
@@ -461,8 +462,7 @@ Resources:
           CHARGING_POINTS_TABLE_NAME: !Ref EVChargingChargingPointsTable
           BOOKINGS_TABLE_NAME: !Ref EVChargingBookingsTable
           PARAMETER_PREFIX: !Sub "${Environment}-" 
-          SECRET_NAME: !Ref EVChargingSecrets 
-          API_GATEWAY_ID: !Ref ApiGateway
+          SECRET_NAME: !Ref EVChargingSecrets
       Policies:
         - SSMParameterReadPolicy:
             ParameterName: '*'

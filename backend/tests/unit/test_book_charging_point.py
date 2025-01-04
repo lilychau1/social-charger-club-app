@@ -2,159 +2,93 @@ import unittest
 from unittest.mock import patch, MagicMock, ANY
 import os
 import json
-from lambda_functions.book_charging_point.app import lambda_handler, update_dynamodb_charging_points_table_status, send_oocp_reservation_request, get_auth, get_parameter_or_secret
+from lambda_functions.book_charging_point.app import (
+    lambda_handler,
+    update_dynamodb_charging_points_table_status,
+    get_parameter_or_secret,
+    book_charging_point,
+)
 
 class TestBookChargingPoint(unittest.TestCase):
-    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
-    @patch('lambda_functions.book_charging_point.app.charging_points_table')
-    @patch('lambda_functions.book_charging_point.app.bookings_table')
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
-    def test_lambda_handler_success(self, mock_get_parameter_or_secret, mock_bookings_table, mock_charging_points_table, mock_api_gateway_client):
-        # Mock the secret and parameter retrieval
-        mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
 
-        # Mock DynamoDB and API Gateway responses
-        mock_charging_points_table.update_item.return_value = 'Updated'
-        mock_api_gateway_client.test_invoke_method.return_value = {
-            'status': 200,
-            'body': json.dumps({'result': 'success'})
-        }
+    @patch('lambda_functions.book_charging_point.app.requests.post')
+    @patch('lambda_functions.book_charging_point.app.log_booking_to_dynamodb')
+    @patch('lambda_functions.book_charging_point.app.update_dynamodb_charging_points_table_status')
+    def test_lambda_handler_success(self, mock_update_status, mock_log_booking, mock_requests_post):
+        mock_requests_post.return_value = MagicMock(status_code=200, json=lambda: {"message": "Success"})
+        mock_update_status.return_value = None
+        mock_log_booking.return_value = None
 
-        mock_bookings_table.put_item.return_value = 'Updated'
         event = {
             'httpMethod': 'POST', 
-            'body': '{\"consumerId\": \"test-consumer-id\", \"oocpChargePointId\": \"test-point-id\",\"system\": \"Virta\",\"connectorId\": \"1\",\"startTime\": \"2024-12-30T12:00:00\",\"endTime\": \"2024-12-30T13:00:00\"}'
+            'body': json.dumps({
+                'consumerId': 'test-consumer-id',
+                'oocpChargePointId': 'test-point-id',
+                'system': 'Virta',
+                'connectorId': '1',
+                'startTime': '2024-12-30T12:00:00',
+                'endTime': '2024-12-30T13:00:00'  
+            })
         }
-
         response = lambda_handler(event, None)
 
         self.assertEqual(response['statusCode'], 200)
         self.assertIn('Slot booked successfully', response['body'])
-        mock_charging_points_table.update_item.assert_called_once()
+        mock_update_status.assert_called_once()
+        mock_log_booking.assert_called_once()
 
     @patch('lambda_functions.book_charging_point.app.charging_points_table')
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    def test_update_dynamodb_status(self, mock_get_parameter_or_secret, mock_charging_points_table):
-        # Mock the secret and parameter retrieval
-        mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
+    def test_update_dynamodb_charging_points_table_status(self, mock_table):
+        mock_table.update_item.return_value = None
+        timestamp = '2024-01-01T00:00:00'
+        consumer_id = 'consumer-123'
 
-        mock_charging_points_table.update_item.return_value = 'Updated'
-        timestamp = 'mock-timestamp'
-        mock_consumer_id = 'mock-consumer-id'
-        update_dynamodb_charging_points_table_status('test-point-id', False, timestamp, mock_consumer_id)
+        update_dynamodb_charging_points_table_status('point-id', False, timestamp, consumer_id)
 
-        mock_charging_points_table.update_item.assert_called_once_with(
-            Key={'oocpChargePointId': 'test-point-id'},
+        mock_table.update_item.assert_called_once_with(
+            Key={'oocpChargePointId': 'point-id'},
             UpdateExpression="SET isAvailable = :is_available, statusUpdatedAt = :timestamp, currentBookedConsumerId = :consumer_id",
             ExpressionAttributeValues={
                 ':is_available': False,
-                ':timestamp': ANY, 
-                ':consumer_id': mock_consumer_id
+                ':timestamp': timestamp,
+                ':consumer_id': consumer_id
             },
             ConditionExpression="attribute_exists(oocpChargePointId)"
         )
 
-    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    def test_send_oocp_reservation_request_virta(self, mock_get_parameter_or_secret, mock_api_gateway_client):
-        # Mock the secret and parameter retrieval
-        mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
+    @patch('lambda_functions.book_charging_point.app.requests.post')
+    def test_book_charging_point_virta(self, mock_requests_post, mock_get_parameter_or_secret):
+        mock_get_parameter_or_secret.return_value = 'mocked-secret'
+        mock_requests_post.return_value = MagicMock(status_code=200, json=lambda: {"message": "Reserved"})
 
-        # Mock API Gateway response
-        mock_api_gateway_client.test_invoke_method.return_value = {
-            'status': 200,
-            'body': json.dumps({'result': 'success'})
-        }
-
-        response = send_oocp_reservation_request(
-            'Virta',
-            'test-point-id',
-            '1',
-            '2024-12-30T12:00:00',
-            '2024-12-30T13:00:00'
-        )
+        response = book_charging_point('Virta', 'test-id', '1', '2024-12-30T12:00:00', '2024-12-30T13:00:00')
 
         self.assertEqual(response['status'], 'success')
-        mock_api_gateway_client.test_invoke_method.assert_called_once()
+        mock_requests_post.assert_called_once()
 
-    @patch('lambda_functions.book_charging_point.app.api_gateway_client')
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    def test_send_oocp_reservation_request_evbox(self, mock_get_parameter_or_secret, mock_api_gateway_client):
-        # Mock the secret and parameter retrieval
-        mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
+    @patch('lambda_functions.book_charging_point.app.requests.post')
+    def test_book_charging_point_invalid_system(self, mock_requests_post, mock_get_parameter_or_secret):
+        with self.assertRaises(ValueError) as context:
+            book_charging_point('InvalidSystem', 'test-id', '1', '2024-12-30T12:00:00', '2024-12-30T13:00:00')
+        self.assertEqual(str(context.exception), 'Unsupported system: InvalidSystem')
 
-        mock_api_gateway_client.test_invoke_method.return_value = {
-            'status': 200,
-            'body': json.dumps({'result': 'success'})
-        }
+    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')
+    def test_get_parameter_or_secret_env(self, mock_get_parameter_or_secret):
+        os.environ['TEST_PARAM'] = 'env-value'
+        result = get_parameter_or_secret('TEST_PARAM')
+        self.assertEqual(result, 'env-value')
 
-        response = send_oocp_reservation_request(
-            'EVBox',
-            'test-point-id',
-            '1',
-            '2024-12-30T12:00:00',
-            '2024-12-30T13:00:00'
-        )
+    @patch('lambda_functions.book_charging_point.app.ssm_client.get_parameter')
+    @patch('lambda_functions.book_charging_point.app.secrets_client.get_secret_value')
+    def test_get_parameter_or_secret_fallbacks(self, mock_get_secret_value, mock_get_ssm_parameter):
+        os.environ.pop('TEST_PARAM', None)  # Ensure the env variable is not set
+        mock_get_ssm_parameter.return_value = {'Parameter': {'Value': 'ssm-value'}}
+        mock_get_secret_value.return_value = {'SecretString': json.dumps({'TEST_PARAM': 'secret-value'})}
 
-        self.assertEqual(response['status'], 'success')
-        mock_api_gateway_client.test_invoke_method.assert_called_once()
-
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    def test_get_auth(self, mock_get_parameter_or_secret):
-        # Mock the secret retrieval for testing
-        os.environ['VIRTA_API_KEY'] = 'mocked-secret-value'
-        os.environ['EVBOX_TOKEN'] = 'mocked-secret-value'
-
-        # Mock the get_parameter_or_secret method to return the mock API keys
-        mock_get_parameter_or_secret.return_value = 'mocked-secret-value'
-
-        virta_headers = get_auth('Virta')
-        evbox_headers = get_auth('EVBox')
-
-        self.assertEqual(virta_headers, {'X-API-Key': 'mocked-secret-value'})
-        self.assertEqual(evbox_headers, {'Authorization': 'Bearer mocked-secret-value'})
-
-
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
-    def test_get_parameter_or_secret_env_var_exists(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
-        # Where environment variable is set
-        os.environ['VIRTA_API_KEY'] = 'env-api-key'
-        mock_get_ssm_parameter.return_value = None 
-        mock_get_secret_value.return_value = None
-
-        value = get_parameter_or_secret('VIRTA_API_KEY')
-        self.assertEqual(value, 'env-api-key')
-        mock_get_ssm_parameter.assert_not_called() 
-        mock_get_secret_value.assert_not_called()
-        
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
-    def test_get_parameter_or_secret_no_env_var_key(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
-
-        # Where environment variable is not set
-        mock_get_ssm_parameter.return_value = 'some-param'
-        mock_get_secret_value.return_value = 'some-secret' 
-
-        value = get_parameter_or_secret('NON_EXISTING_VARIABLE_KEY')
-        self.assertEqual(value, 'some-secret')
-        mock_get_ssm_parameter.assert_not_called()
-        mock_get_secret_value.assert_called_once()
-        
-    @patch('lambda_functions.book_charging_point.app.get_parameter_or_secret')  # Mock the call to Parameter Store and Secrets Manager
-    @patch('lambda_functions.book_charging_point.app.get_ssm_parameter')  # Mock SSM parameter call
-    @patch('lambda_functions.book_charging_point.app.get_secret_value')  # Mock Secrets Manager secret call
-    def test_get_parameter_or_secret_no_env_var_param(self, mock_get_secret_value, mock_get_ssm_parameter, mock_get_parameter_or_secret):
-
-        # Where environment variable is not set
-        mock_get_ssm_parameter.return_value = 'some-param'
-        mock_get_secret_value.return_value = 'some-secret' 
-
-        # We should return the value from SSM
-        value = get_parameter_or_secret('NON_EXISTING_VARIABLE')
-        self.assertEqual(value, 'some-param')
+        result = get_parameter_or_secret('TEST_PARAM')
+        self.assertEqual(result, 'ssm-value')
         mock_get_ssm_parameter.assert_called_once()
         mock_get_secret_value.assert_not_called()
 

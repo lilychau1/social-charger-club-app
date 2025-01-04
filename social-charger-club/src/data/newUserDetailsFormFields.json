@@ -1,0 +1,223 @@
+{
+    "basic": [
+      {
+        "name": "firstName",
+        "label": "First Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "lastName",
+        "label": "Last Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "dateOfBirth",
+        "label": "Date of Birth",
+        "type": "date",
+        "required": false
+      },
+      {
+        "name": "billingAddress",
+        "label": "Billing Address",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "gender",
+        "label": "Gender",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "male", "label": "Male" },
+          { "value": "female", "label": "Female" },
+          { "value": "other", "label": "Other" }
+        ]
+      }
+    ],
+  
+    "consumer": [
+      {
+        "name": "evModel",
+        "label": "EV Model",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "evAge",
+        "label": "EV Age (in years)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "evElectricityUsage",
+        "label": "Typical EV Electricity Usage (kWh)",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "low", "label": "Low (< 5 kWh)" },
+          { "value": "medium", "label": "Medium (5-15 kWh)" },
+          { "value": "high", "label": "High (> 15 kWh)" }
+        ]
+      },
+      {
+        "name": "evUseFrequency",
+        "label": "Typical EV Use Frequency",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "daily", "label": "Daily" },
+          { "value": "weekly", "label": "Weekly" },
+          { "value": "monthly", "label": "Monthly" },
+          { "value": "rarely", "label": "Rarely" }
+        ]
+      },
+      {
+        "name": "electricitySource",
+        "label": "Primary Source of Electricity",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "grid", "label": "Grid" },
+          { "value": "solar", "label": "Solar" },
+          { "value": "wind", "label": "Wind" },
+          { "value": "other", "label": "Other" }
+        ]
+      },
+      {
+        "name": "homeOwnership",
+        "label": "Do you own your home?",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "yes", "label": "Yes" },
+          { "value": "no", "label": "No" }
+        ]
+      }
+    ],
+  
+    "producer": [
+      {
+        "name": "businessName",
+        "label": "Business Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "businessSize",
+        "label": "Business Size (kW output)",
+        "type": "select",
+        "required": true,
+        "options": [
+          { "value": "small", "label": "Small (< 100 kW)" },
+          { "value": "medium", "label": "Medium (100 kW - 1 MW)" },
+          { "value": "large", "label": "Large (> 1 MW)" }
+        ]
+      },
+      {
+        "name": "businessAddress",
+        "label": "Business Address",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "businessEmail",
+        "label": "Business Email",
+        "type": "email",
+        "required": true
+      },
+      {
+        "name": "businessPhone",
+        "label": "Business Phone Number",
+        "type": "tel",
+        "required": true
+      },
+      {
+        "name": "energyOutput",
+        "label": "Average Energy Output (kWh)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "energySource",
+        "label": "Energy Source (if applicable)",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "solar", "label": "Solar" },
+          { "value": "wind", "label": "Wind" },
+          { "value": "hydro", "label": "Hydro" },
+          { "value": "other", "label": "Other" }
+        ]
+      },
+      {
+        "name": "licenseNumber",
+        "label": "Business License Number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "taxIdentificationNumber",
+        "label": "Tax Identification Number (TIN)",
+        "type": "text",
+        "required": true
+      }
+    ],
+  
+    "prosumer": [
+      {
+        "name": "evModel",
+        "label": "EV Model",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "evAge",
+        "label": "EV Age (in years)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "evElectricityUsage",
+        "label": "Typical EV Electricity Usage (kWh)",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "low", "label": "Low (< 5 kWh)" },
+          { "value": "medium", "label": "Medium (5-15 kWh)" },
+          { "value": "high", "label": "High (> 15 kWh)" }
+        ]
+      },
+      {
+        "name": "businessName",
+        "label": "Business Name (optional)",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "businessSize",
+        "label": "Business Size (optional)",
+        "type": "select",
+        "required": false,
+        "options": [
+          { "value": "small", "label": "Small (< 100 kW)" },
+          { "value": "medium", "label": "Medium (100 kW - 1 MW)" },
+          { "value": "large", "label": "Large (> 1 MW)" }
+        ]
+      },
+      {
+        "name": "energyOutput",
+        "label": "Energy Output (optional)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "licenseNumber",
+        "label": "Business License Number (optional)",
+        "type": "text",
+        "required": false
+      }
+    ]
+  }
+  

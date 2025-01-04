@@ -4,12 +4,11 @@ import os
 import uuid
 from datetime import datetime
 from botocore.exceptions import ClientError
+import requests
 
 dynamodb = boto3.resource('dynamodb')
 charging_points_table = dynamodb.Table(os.environ.get('CHARGING_POINTS_TABLE_NAME'))
 bookings_table = dynamodb.Table(os.environ.get('BOOKINGS_TABLE_NAME'))
-
-api_gateway_client = boto3.client('apigateway')
 
 ssm_client = boto3.client('ssm')
 secrets_client = boto3.client('secretsmanager')
@@ -24,21 +23,15 @@ cors_header = {
 }
 
 def lambda_handler(event, context):
+    # Handle CORS preflight requests (OPTIONS)
     if event['httpMethod'] == 'OPTIONS':
         return {
             'statusCode': 200,
             'headers': cors_header
         }
-        
-    try:
-        if 'body' in event:
-            event_body = json.loads(event['body'])
-        else:
-            raise ValueError("Missing 'body' field in event.")
 
-        required_fields = ['oocpChargePointId', 'system', 'connectorId', 'startTime', 'endTime']
-        if not all(field in event_body for field in required_fields):
-            raise ValueError("Missing required input fields.")
+    try:
+        event_body = json.loads(event['body'])
 
         consumer_id = event_body['consumerId']
         oocp_charge_point_id = event_body['oocpChargePointId']
@@ -47,7 +40,7 @@ def lambda_handler(event, context):
         start_time = event_body['startTime']
         end_time = event_body['endTime']
 
-        reservation_response = send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, start_time, end_time)
+        reservation_response = book_charging_point(system, oocp_charge_point_id, connector_id, start_time, end_time)
         
         if reservation_response.get('status') == 'success':
             timestamp = datetime.now().isoformat()
@@ -56,6 +49,7 @@ def lambda_handler(event, context):
             log_booking_to_dynamodb(consumer_id, oocp_charge_point_id, start_time, end_time, timestamp)
             return {
                 'statusCode': 200,
+                'headers': cors_header, 
                 'body': json.dumps({'message': 'Slot booked successfully, charging point is now unavailable.'})
             }
         else:
@@ -65,8 +59,62 @@ def lambda_handler(event, context):
         print(f"Error: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': cors_header, 
             'body': json.dumps({'error': str(e)})
         }
+
+def book_charging_point(system, oocp_charge_point_id, connector_id, start_time, end_time):
+    if system == 'Virta':
+        return book_virta_charging_point(oocp_charge_point_id, connector_id, start_time, end_time)
+    elif system == 'EVBox':
+        return book_evbox_charging_point(oocp_charge_point_id, connector_id, start_time, end_time)
+    elif system in ['Siemens', 'Schneider Electric']:
+        return book_generic_cpo_charging_point(oocp_charge_point_id, connector_id, start_time, end_time)
+    else:
+        raise ValueError(f"Unsupported system: {system}")
+
+def book_virta_charging_point(oocp_charge_point_id, connector_id, start_time, end_time):
+    url = get_parameter_or_secret('VIRTA_API_URL')
+    headers = {'X-API-Key': get_parameter_or_secret('VIRTA_API_KEY')}
+    payload = {
+        'chargePointId': oocp_charge_point_id,
+        'connectorId': connector_id,
+        'startTime': start_time,
+        'endTime': end_time
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    return handle_response(response)
+
+def book_evbox_charging_point(oocp_charge_point_id, connector_id, start_time, end_time):
+    url = get_parameter_or_secret('EVBOX_API_URL')
+    headers = {'Authorization': f"Bearer {get_parameter_or_secret('EVBOX_TOKEN')}"}
+    payload = {
+        'chargePointId': oocp_charge_point_id,
+        'connectorId': connector_id,
+        'startTime': start_time,
+        'endTime': end_time
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    return handle_response(response)
+
+def book_generic_cpo_charging_point(oocp_charge_point_id, connector_id, start_time, end_time):
+    url = get_parameter_or_secret('GENERIC_CPO_API_URL')
+    headers = {'Authorization': f"Bearer {get_parameter_or_secret('GENERIC_CPO_TOKEN')}"}
+    payload = {
+        'chargePointId': oocp_charge_point_id,
+        'connectorId': connector_id,
+        'startTime': start_time,
+        'endTime': end_time
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    return handle_response(response)
+
+def handle_response(response):
+    if response.status_code == 200:
+        return {'status': 'success', 'message': response.json()}
+    else:
+        return {'status': 'failure', 'message': response.text}
+    
 
 def log_booking_to_dynamodb(
     consumer_id, 
@@ -144,46 +192,3 @@ def get_secret_value(secret_key):
     except ClientError as e:
         print(f"Error fetching {secret_key} from Secrets Manager: {str(e)}")
         return None
-
-def send_oocp_reservation_request(system, oocp_charge_point_id, connector_id, start_time, end_time):
-    api_url = get_api_gateway_url(system)
-    if not api_url:
-        raise ValueError(f"No API Gateway URL configured for system: {system}")
-
-    headers = {
-        'Content-Type': 'application/json',
-        **get_auth(system)
-    }
-    payload = {
-        'chargePointId': oocp_charge_point_id,
-        'connectorId': connector_id,
-        'startTime': start_time,
-        'endTime': end_time
-    }
-
-    try:
-        response = api_gateway_client.test_invoke_method(
-            restApiId=os.environ.get('API_GATEWAY_ID'),
-            resourceId=get_parameter_or_secret(f'{system.upper()}_RESOURCE_ID'),
-            httpMethod='POST',
-            headers=headers,
-            body=json.dumps(payload)
-        )
-        response_body = json.loads(response['body'])
-        if response['status'] == 200:
-            return {'status': 'success', 'message': response_body}
-        else:
-            raise Exception(f"API Gateway call failed: {response_body}")
-    except ClientError as e:
-        raise Exception(f"Error invoking API Gateway: {str(e)}")
-
-def get_auth(system):
-    if system == 'Virta':
-        return {'X-API-Key': get_parameter_or_secret('VIRTA_API_KEY')}
-    elif system == 'ChargePoint':
-        return {'Authorization': f"Bearer {get_parameter_or_secret('CHARGEPOINT_API_TOKEN')}"}
-    elif system == 'EVBox':
-        return {'Authorization': f"Bearer {get_parameter_or_secret('EVBOX_TOKEN')}"}
-    elif system in ['Siemens', 'Schneider Electric']:
-        return {'Authorization': f"Bearer {get_parameter_or_secret('GENERIC_CPO_TOKEN')}"}
-    return {}
