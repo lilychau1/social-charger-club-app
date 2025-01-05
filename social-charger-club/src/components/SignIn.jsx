@@ -37,7 +37,14 @@ const SignIn = () => {
       if (response.ok) {
         localStorage.setItem('idToken', result.idToken);  // Store the token
         alert('Sign in successful');
-        navigate('/dashboard');  // Redirect to dashboard or home page after successful sign-in
+        // Check if it's the first login after account confirmation
+        const isFirstLogin = sessionStorage.getItem('isFirstLogin');
+        if (isFirstLogin === 'true') {
+          sessionStorage.removeItem('isFirstLogin'); // Remove the flag after the first login
+          navigate("/new-user-details"); // Redirect to new user details page
+        } else {
+          navigate("/my-account"); // Redirect to MyAccount page on subsequent logins
+        }
       } else {
         setError(result.error || 'Error during sign-in');
       }
