@@ -80,8 +80,9 @@ def lambda_handler(event, context):
         user_type = body.get('userType')
 
         user_id, consumer_id, producer_id = generate_ids(user_type)
-        print(f"Parsed Data: email={email}, username={username}, user_type={user_type}, password=****")
 
+        print(f"Parsed Data: email={email}, username={username}, user_type={user_type}, password=****")
+        
         try: 
             cognito_resp = create_cognito_user(
                 email,
@@ -89,8 +90,8 @@ def lambda_handler(event, context):
                 username,
                 user_type,
                 user_id,
-                consumer_id if consumer_id else None,
-                producer_id if consumer_id else None
+                consumer_id,
+                producer_id
             )
         except ClientError as e:
             return {
