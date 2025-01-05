@@ -1,22 +1,20 @@
-// src/components/ProtectedRoute.js
 import React from 'react';
-import { Navigate } from 'react-router-dom'; 
-import { useAuth } from '../contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext'; // Adjust path accordingly
 
-const ProtectedRoute = ({ element: Element, ...rest }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ element }) => {
+  const { isAuthenticated, loading } = useAuth();  // Get authentication state from AuthContext
 
+  // If loading or not authenticated, redirect to sign-in
   if (loading) {
-    // Optionally, show a loading spinner or placeholder while checking authentication status
-    return <div>Loading...</div>;
+    return <div>Loading...</div>;  // Optionally display a loading spinner
   }
 
   if (!isAuthenticated) {
-    // Redirect to sign-in page if not authenticated
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/signin" replace />;  // Redirect to SignIn page if not authenticated
   }
 
-  return <Element {...rest} />;
+  return element;  // Allow access to the protected route if authenticated
 };
 
 export default ProtectedRoute;

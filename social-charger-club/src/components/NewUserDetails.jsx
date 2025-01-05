@@ -1,63 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import newUserDetailsFormFields from '../data/newUserDetailsFormFields.json';
 import { useNavigate } from 'react-router-dom';
 
 const NewUserDetails = () => {
   const { user } = useAuth();
   const [formFields, setFormFields] = useState([]);
   const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(false); // Track loading state
-  const [error, setError] = useState(""); // Track error message
-  const apiUrl = "YOUR_API_URL_HERE/api/user/new-user-details"; // Replace with your actual API URL
-  const navigate = useNavigate();
+  const apiUrl = `${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/store-new-user-details`;
+  const navigate = useNavigate(); // Initialize navigate function
 
-  // Fetch form fields when user type is available
   useEffect(() => {
-    const fetchFormFields = async () => {
-      if (user && user.userType) {
-        setLoading(true); // Start loading
+    if (user && user.userType) {
+      const userRole = user.userType;
+      let fields = { basic: [], consumer: [], producer: [] };
 
-        try {
-          // Fetch form fields from the API based on the user type
-          const response = await fetch(`${apiUrl}/form-fields`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-
-          const result = await response.json();
-
-          if (response.ok) {
-            // Set the form fields based on user role
-            let fields = { basic: [], consumer: [], producer: [] };
-
-            const userRole = user.userType;
-            if (userRole === 'consumer') {
-              fields.basic = result.basic || [];
-              fields.consumer = result.consumer || [];
-            } else if (userRole === 'producer') {
-              fields.basic = result.basic || [];
-              fields.producer = result.producer || [];
-            } else if (userRole === 'prosumer') {
-              fields.basic = result.basic || [];
-              fields.consumer = result.consumer || [];
-              fields.producer = result.producer || [];
-            }
-
-            setFormFields(fields);
-          } else {
-            setError('Error fetching form fields');
-          }
-        } catch (err) {
-          setError('Request failed');
-        } finally {
-          setLoading(false); // End loading
-        }
+      if (userRole === 'consumer') {
+        fields.basic = newUserDetailsFormFields.basic || [];
+        fields.consumer = newUserDetailsFormFields.consumer || [];
+      } else if (userRole === 'producer') {
+        fields.basic = newUserDetailsFormFields.basic || [];
+        fields.producer = newUserDetailsFormFields.producer || [];
+      } else if (userRole === 'prosumer') {
+        fields.basic = newUserDetailsFormFields.basic || [];
+        fields.consumer = newUserDetailsFormFields.consumer || [];
+        fields.producer = newUserDetailsFormFields.producer || [];
       }
-    };
 
-    fetchFormFields();
+      setFormFields(fields);
+    }
   }, [user]);
 
   const handleInputChange = (e, key) => {
@@ -70,8 +41,6 @@ const NewUserDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); // Set loading to true while submitting
-
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -87,19 +56,16 @@ const NewUserDetails = () => {
       });
 
       const result = await response.json();
-
       if (response.ok) {
         alert('Data submitted successfully');
         navigate("/my-account");  // Redirect to My Account page after successful submission
       } else {
-        setError('Error submitting data');
         console.error('Error:', result);
+        alert('Error submitting data');
       }
     } catch (error) {
-      setError('Request failed');
       console.error('Request failed:', error);
-    } finally {
-      setLoading(false); // End loading
+      alert('Error submitting data');
     }
   };
 
@@ -143,7 +109,6 @@ const NewUserDetails = () => {
   return (
     <div className="container mt-5">
       <h2>New User Details</h2>
-      {error && <div className="alert alert-danger">{error}</div>}
       <form onSubmit={handleSubmit}>
         {Object.entries(formFields).map(([key, fields]) =>
           fields.length > 0 ? (
@@ -158,8 +123,8 @@ const NewUserDetails = () => {
           ) : null
         )}
         <div className="form-group text-center mt-4">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit'}
+          <button type="submit" className="btn btn-primary">
+            Submit
           </button>
         </div>
       </form>
