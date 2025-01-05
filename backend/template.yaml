@@ -32,8 +32,10 @@ Resources:
     Properties:
       Description: "API Gateway for EV Charging"
       StageName: Prod
-
-
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'http://localhost:3000'"
   EVChargingUsersTable: 
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -346,6 +348,9 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.13
       Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EVChargingUsersTable
       Environment:
         Variables:
           USER_POOL_ID: !Ref UserPool
@@ -359,6 +364,28 @@ Resources:
           Properties:
             RestApiId: !Ref ApiGateway
             Path: /register-user
+            Method: post
+
+  ConfirmUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ConfirmUserFunction"
+      CodeUri: lambda_functions/confirm_user/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Architectures:
+        - x86_64
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /confirm-user
             Method: post
 
   StoreNewUserDetailsFunction:

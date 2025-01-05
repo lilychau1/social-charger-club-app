@@ -128,7 +128,6 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': error_message})
         }
     except Exception as e:
-        breakpoint()
         error_message = f"Internal error: {str(e)}"
         log_payment_to_dynamodb(consumer_id, producer_id, charging_point_id, oocp_charge_point_id, amount, payment_method_id, False, error_message)
         return {

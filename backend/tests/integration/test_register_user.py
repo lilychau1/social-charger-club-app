@@ -135,7 +135,6 @@ def test_lambda_handler_duplicate_user(duplicate_user):
     assert 'error' in duplicate_body
     assert 'UsernameExistsException' in duplicate_body['error']
 
-    # Clean up cognito and dynamodb by deleting the user/record created for the test
     clean_up_cognito_user(duplicate_user['email'])
     clean_up_dynamodb_user(user_id)
 

@@ -50,6 +50,7 @@ def create_cognito_user(
         + [{'Name': 'custom:consumerId', 'Value': consumer_id}] if consumer_id else [] # record consumer_id if it is not null
         + [{'Name': 'custom:producerId', 'Value': producer_id}] if producer_id else [] # record producer_id if it is not null
     )
+
     return cognito_resp
 
 def lambda_handler(event, context):
@@ -59,7 +60,8 @@ def lambda_handler(event, context):
     if event['httpMethod'] == 'OPTIONS':
         return {
             'statusCode': 200,
-            'headers': cors_header
+            'headers': cors_header, 
+            'body': json.dumps({'message': 'OPTIONS request'})
         }
 
     try:
@@ -72,6 +74,7 @@ def lambda_handler(event, context):
         user_type = body.get('userType')
 
         user_id, consumer_id, producer_id = generate_ids(user_type)
+        print(f"Parsed Data: email={email}, username={username}, user_type={user_type}, password=****")
 
         try: 
             cognito_resp = create_cognito_user(
