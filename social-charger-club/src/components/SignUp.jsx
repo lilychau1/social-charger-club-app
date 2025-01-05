@@ -56,16 +56,14 @@ const SignUp = () => {
     const userPayload = {
       email,
       username,
-      userType,
+      userType: userType,
       password,
     };
+    console.log(`env: VITE_EV_CHARGING_API_GATEWAY_URL = ${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}`);
   
     try {
-      // Fetch the API URL from environment variables
-      const apiGatewayUrl = process.env.REACT_APP_API_GATEWAY_URL;
-  
-      // Send data to the API Gateway
-      const response = await fetch(`${apiGatewayUrl}/register-user`, {
+      // Send data to the API using the fetch API
+      const response = await fetch(`${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/register-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,14 +71,25 @@ const SignUp = () => {
         body: JSON.stringify(userPayload),
       });
   
-      const responseText = await response.text();
-      console.log("API Response Text:", responseText);
+      // Log the raw response (check if it's valid JSON or text)
+      const responseText = await response.text();  // Use .text() for raw response text
+      console.log("API Response Text:", responseText); // This shows raw text response
   
-      const responseData = JSON.parse(responseText); // Assuming the response body is JSON
+      let responseData;
+      try {
+        // Try parsing the response as JSON
+        responseData = JSON.parse(responseText);
+      } catch (error) {
+        console.error("Error parsing response JSON:", error);
+        responseData = { error: "Failed to parse response JSON." };
+      }
   
+      // Check if the response is successful
       if (!response.ok) {
         throw new Error(responseData.error || "Failed to register user.");
       }
+  
+      console.log("API Response Data:", responseData); // Log the parsed response
   
       // On success, navigate to the next page
       navigate("/confirm-account", { state: { email: email } });
@@ -90,6 +99,7 @@ const SignUp = () => {
       setError(`Error: ${err.message}`);
     }
   };
+  
   
   return (
     <div className="container mt-5">
