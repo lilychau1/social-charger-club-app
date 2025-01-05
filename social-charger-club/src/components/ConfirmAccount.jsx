@@ -23,7 +23,7 @@ const ConfirmAccount = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('YOUR_API_URL_HERE/api/confirm-account', {
+      const response = await fetch(`${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/confirm-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ const ConfirmAccount = () => {
         sessionStorage.setItem('isFirstLogin', 'true'); // Store flag in sessionStorage
         navigate('/signin'); // Redirect to sign-in page
       } else {
-        setError(result.message || 'Error confirming account');
+        setError(result.error || 'Error confirming account');
       }
     } catch (error) {
       setLoading(false);
@@ -56,7 +56,7 @@ const ConfirmAccount = () => {
     setResendLoading(true);
 
     try {
-      const response = await fetch('YOUR_API_URL_HERE/api/resend-confirmation-code', {
+      const response = await fetch(`${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/resend-confirmation-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ const ConfirmAccount = () => {
       if (response.ok) {
         alert('Confirmation code resent successfully!');
       } else {
-        setError(result.message || 'Error resending confirmation code');
+        setError(result.error || 'Error resending confirmation code');
       }
     } catch (error) {
       setResendLoading(false);
