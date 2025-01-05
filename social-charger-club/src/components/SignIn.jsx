@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';  // Import the AuthContext hook
+import { useAuth } from '../contexts/AuthContext';  // Import useAuth to get logIn function
 
 const SignIn = () => {
+  const { logIn } = useAuth();  // Use logIn from AuthContext to store user data
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { logIn } = useAuth();  // Get the logIn function from AuthContext
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -22,7 +22,6 @@ const SignIn = () => {
     setError('');
 
     try {
-      // Send sign-in request to the Lambda function
       const response = await fetch(`${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/sign-in`, {
         method: 'POST',
         headers: {
@@ -38,20 +37,22 @@ const SignIn = () => {
       setLoading(false);
 
       if (response.ok) {
-        const { idToken, user } = result;  // Assuming idToken and user details are returned
-        localStorage.setItem('idToken', idToken);  // Store the token
+        localStorage.setItem('idToken', result.idToken);  // Store token
 
-        logIn({ ...user, idToken });  // Update global auth state
+        // Retrieve and store user details from the response
+        const userDetails = result.user;
+
+        logIn(userDetails); // Store the user data in the context
 
         alert('Sign in successful');
-        
+
         // Check if it's the first login after account confirmation
         const isFirstLogin = sessionStorage.getItem('isFirstLogin');
         if (isFirstLogin === 'true') {
-          sessionStorage.removeItem('isFirstLogin');  // Remove the flag after the first login
-          navigate("/new-user-details");  // Redirect to new user details page
+          sessionStorage.removeItem('isFirstLogin');
+          navigate("/new-user-details"); // Redirect to New User Details page
         } else {
-          navigate("/my-account");  // Redirect to MyAccount page on subsequent logins
+          navigate("/my-account"); // Redirect to My Account page on subsequent logins
         }
       } else {
         setError(result.error || 'Error during sign-in');

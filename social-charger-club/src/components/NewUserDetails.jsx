@@ -7,6 +7,8 @@ const NewUserDetails = () => {
   const { user } = useAuth();
   const [formFields, setFormFields] = useState([]);
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const apiUrl = `${import.meta.env.VITE_EV_CHARGING_API_GATEWAY_URL}/store-new-user-details`;
   const navigate = useNavigate(); // Initialize navigate function
 
@@ -33,6 +35,13 @@ const NewUserDetails = () => {
 
   const handleInputChange = (e, key) => {
     const { name, value } = e.target;
+
+    // Ensure the name is not empty before updating formData
+    if (!name || name.trim() === '') {
+      console.error('Invalid input name:', name);
+      return; // Ignore invalid inputs with no name
+    }
+
     setFormData((prevData) => ({
       ...prevData,
       [key]: { ...prevData[key], [name]: value },
@@ -41,31 +50,45 @@ const NewUserDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!user || !user.id) {
+      setErrorMessage("User information is not available.");
+      return;
+    }
+
+    console.log("Form data being submitted:", formData);
+
+    const payload = {
+      userId: user.id,
+      consumerId: user.consumerId,
+      producerId: user.producerId,
+      updates: formData,
+    };
+
+    setLoading(true);
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          user_id: user.id,
-          consumer_id: user.consumerId,
-          producer_id: user.producerId,
-          updates: formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
+      setLoading(false);
+
       if (response.ok) {
         alert('Data submitted successfully');
-        navigate("/my-account");  // Redirect to My Account page after successful submission
+        navigate("/my-account");
       } else {
         console.error('Error:', result);
-        alert('Error submitting data');
+        setErrorMessage(result.error || 'Error submitting data');
       }
     } catch (error) {
+      setLoading(false);
       console.error('Request failed:', error);
-      alert('Error submitting data');
+      setErrorMessage('Error submitting data');
     }
   };
 
@@ -99,6 +122,7 @@ const NewUserDetails = () => {
           type={type}
           className="form-control"
           id={name}
+          name={name} // Ensure the name attribute is properly set
           required={required}
           onChange={(e) => handleInputChange(e, key)}
         />
@@ -122,9 +146,10 @@ const NewUserDetails = () => {
             </div>
           ) : null
         )}
+        {errorMessage && <div className="alert alert-danger">{errorMessage}</div>}
         <div className="form-group text-center mt-4">
-          <button type="submit" className="btn btn-primary">
-            Submit
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </form>
