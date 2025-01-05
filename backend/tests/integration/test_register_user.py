@@ -27,7 +27,7 @@ def test_user():
         'email': 'testuser@example.com',
         'password': 'TestPassword123!',
         'username': 'testuser',
-        'userType': 'consumer'
+        'userType': 'producer'
     }
 
 @pytest.fixture(scope='module')

@@ -46,10 +46,16 @@ def create_cognito_user(
             {'Name': 'preferred_username', 'Value': username},
             {'Name': 'custom:userType', 'Value': user_type},
             {'Name': 'custom:userId', 'Value': user_id}
-        ] 
-        + [{'Name': 'custom:consumerId', 'Value': consumer_id}] if consumer_id else [] # record consumer_id if it is not null
-        + [{'Name': 'custom:producerId', 'Value': producer_id}] if producer_id else [] # record producer_id if it is not null
-    )
+        ] + 
+        (
+            [{'Name': 'custom:consumerId', 'Value': consumer_id}] 
+            if consumer_id else []
+        )
+        + (
+            [{'Name': 'custom:producerId', 'Value': producer_id}] 
+            if producer_id else []
+        )
+)
 
     return cognito_resp
 
@@ -83,8 +89,8 @@ def lambda_handler(event, context):
                 username,
                 user_type,
                 user_id,
-                consumer_id,
-                producer_id
+                consumer_id if consumer_id else None,
+                producer_id if consumer_id else None
             )
         except ClientError as e:
             return {
@@ -98,8 +104,8 @@ def lambda_handler(event, context):
             'email': email,
             'username': username,
             'userType': user_type,
-            'consumerId': consumer_id,
-            'producerId': producer_id,
+            'consumerId': consumer_id if consumer_id else 'NULL',
+            'producerId': producer_id if producer_id else 'NULL',
             'createdAt': datetime.now().isoformat(),
             'status': 'UNVERIFIED'
         }
