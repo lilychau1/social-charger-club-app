@@ -410,6 +410,34 @@ Resources:
             Path: /resend-confirmation-code
             Method: post
 
+  SignInFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-SignInFunction"
+      CodeUri: lambda_functions/sign_in/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminInitiateAuth
+              Resource: !GetAtt UserPool.Arn
+      Architectures:
+        - x86_64
+      Events:
+        SignIn:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /sign-in
+            Method: post
+
   StoreNewUserDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -711,8 +739,7 @@ Resources:
       ClientName: !Sub "${Environment}-EVChargingUserPoolClient"
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
+        - ADMIN_NO_SRP_AUTH
       ReadAttributes:
         - email
         - preferred_username
