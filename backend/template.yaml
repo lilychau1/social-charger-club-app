@@ -388,6 +388,28 @@ Resources:
             Path: /confirm-user
             Method: post
 
+  ResendConfirmationCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ResendConfirmationCodeFunction"
+      CodeUri: lambda_functions/resend_confirmation_code/
+      Handler: app.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Architectures:
+        - x86_64
+      Events:
+        ResendConfirmationCode:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /resend-confirmation-code
+            Method: post
+
   StoreNewUserDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
